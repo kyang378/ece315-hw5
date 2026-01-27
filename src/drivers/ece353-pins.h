@@ -13,11 +13,39 @@
 
  /***************************************************************************/
  /* LEDs                                                                    */
- /***************************************************************************/
+ /***************************************************************************/\
+ //Green LED
+#define PIN_LED_GREEN P9_2
+#define MASK_LED_GREEN (1 << 2)
+#define PORT_LED_GREEN GPIO_PRT9
 
+//Red LED
+#define PIN_LED_RED P9_0
+#define MASK_LED_RED (1 << 0)
+#define PORT_LED_RED GPIO_PRT9
+
+//Blue LED
+#define PIN_LED_BLUE P8_0
+#define MASK_LED_BLUE (1 << 0)
+#define PORT_LED_BLUE GPIO_PRT8
 /***************************************************************************/
 /* Buttons                                                                 */
 /***************************************************************************/
+//SW1
+#define PIN_BUTTON_SW1 P6_3
+#define MASK_BUTTON_SW1 (1 << 3)
+#define PORT_BUTTON_SW1 GPIO_PRT6
+
+//SW2
+#define PIN_BUTTON_SW2 P6_4
+#define MASK_BUTTON_SW2 (1 << 4)
+#define PORT_BUTTON_SW2 GPIO_PRT6
+
+//SW3
+#define PIN_BUTTON_SW3 P6_5
+#define MASK_BUTTON_SW3 (1 << 5)
+#define PORT_BUTTON_SW3 GPIO_PRT6
+
 
 /***************************************************************************/
 /* LCD                                                                     */

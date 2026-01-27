@@ -10,3 +10,41 @@
  */
 
  #include "leds.h"
+
+ //define function to initialize the LEDs
+ void leds_init(void) {
+    leds_init_gpio();
+}
+
+cy_rslt_t leds_init_gpio(void) {
+    cy_rslt_t rslt = CY_RSLT_SUCCESS;
+    
+    uint32_t led_pins[3] = {PIN_LED_GREEN, PIN_LED_RED, PIN_LED_BLUE};
+    
+    for (int i = 0; i < 3; i++) {
+        rslt = cyhal_gpio_init(led_pins[i], CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 0);
+        if (rslt != CY_RSLT_SUCCESS) {
+            return rslt;
+        }
+    }
+    
+    return rslt;
+}
+
+//define function to set the state of a specific LED
+void leds_set_state(ece353_led_t led, ece353_led_state_t state) {
+    switch (led) {
+        case LED_GREEN:
+            cyhal_gpio_write(PIN_LED_GREEN, (state == LED_STATE_ON) ? 1 : 0);
+            break;
+        case LED_RED:
+            cyhal_gpio_write(PIN_LED_RED, (state == LED_STATE_ON) ? 1 : 0);
+            break;
+        case LED_BLUE:
+            cyhal_gpio_write(PIN_LED_BLUE, (state == LED_STATE_ON) ? 1 : 0);
+            break;
+        default:
+            // Invalid LED, do nothing
+            break;
+    }
+}
