@@ -20,16 +20,16 @@
 #include "timer.h"
 
 typedef enum {
-    BUTTON_SW1 = 0,
+    BUTTON_SW1, // unassigned enums auto-increment starting from 0
     BUTTON_SW2,
-    BUTTON_SW3,
-} ece353_button_t;
+    BUTTON_SW3
+} ece353_button_t; // enum to determine which button the user is trying to interface with
 
 typedef enum {
     BUTTON_STATE_FALLING_EDGE = 0,
-    BUTTON_STATE_LOW,
-    BUTTON_STATE_HIGH,
-    BUTTON_STATE_RISING_EDGE,
+    BUTTON_STATE_LOW = 1,
+    BUTTON_STATE_HIGH = 2,
+    BUTTON_STATE_RISING_EDGE = 3
 } button_state_t;
 
 // Function to initialize the buttons

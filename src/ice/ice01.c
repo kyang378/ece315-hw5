@@ -47,6 +47,8 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    buttons_init_gpio(); // initialize the buttons
+    leds_init_gpio(); // initialize the leds
 }
 
 /*****************************************************************************/
@@ -61,8 +63,43 @@ void app_main(void)
 
     while(1)
     {
+        // Read the state of each button
+        button_state_t state_SW1 = buttons_get_state(BUTTON_SW1);
+        button_state_t state_SW2 = buttons_get_state(BUTTON_SW2);
+        button_state_t state_SW3 = buttons_get_state(BUTTON_SW3);
 
-        /* Sleep for 50mS */
+        // note our buttons are active low, so 1 -> 0 (falling edge) means pressed
+        if (state_SW1 == BUTTON_STATE_FALLING_EDGE) {
+            printf("SW1 has been pressed.\n\r");
+            leds_set_state(LED_RED, LED_STATE_ON);
+        }
+
+        if (state_SW1 == BUTTON_STATE_RISING_EDGE) {
+            printf("SW1 has been released.\n\r");
+            leds_set_state(LED_RED, LED_STATE_OFF);
+        }
+
+        if (state_SW2 == BUTTON_STATE_FALLING_EDGE) {
+            printf("SW2 has been pressed.\n\r");
+            leds_set_state(LED_GREEN, LED_STATE_ON);
+        }
+
+        if (state_SW2 == BUTTON_STATE_RISING_EDGE) {
+            printf("SW2 has been released.\n\r");
+            leds_set_state(LED_GREEN, LED_STATE_OFF);
+        }
+
+        if (state_SW3 == BUTTON_STATE_FALLING_EDGE) {
+            printf("SW3 has been pressed.\n\r");
+            leds_set_state(LED_BLUE, LED_STATE_ON);
+        }
+
+        if (state_SW3 == BUTTON_STATE_RISING_EDGE) {
+            printf("SW3 has been released.\n\r");
+            leds_set_state(LED_BLUE, LED_STATE_OFF);
+        }
+
+        /* Delay for 100mS */
         cyhal_system_delay_ms(50);
 
     }
