@@ -60,9 +60,11 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
-    
+    lcd_initialize();
+    lcd_draw_time(11,03);
     while(1)
     {
     }
 }
+
 #endif

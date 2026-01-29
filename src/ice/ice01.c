@@ -68,6 +68,8 @@ void app_main(void)
     while(1)
     {
 
+        /* Sleep for 50mS */
+        cyhal_system_delay_ms(50);
 
         //detect and print button states
         //SW1

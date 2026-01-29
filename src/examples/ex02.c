@@ -49,6 +49,13 @@ void app_init_hw(void)
     printf("* Time: %s\n\r", __TIME__);
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
+
+    rslt = lcd_initialize();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("LCD Initialization failed with error: %d\n", rslt);
+        CY_ASSERT(0);
+    }
+
 }
 
 /*****************************************************************************/
@@ -58,7 +65,10 @@ void app_init_hw(void)
  * @brief
  * This function implements the behavioral requirements for the ICE
  */
-void app_main(void)
-{
+void app_main(void) {
+    lcd_draw_rectangle(160, 120, 50, 30, LCD_COLOR_WHITE, true);
+    while (1) {
+        // Do nothing - everything is handled in initialization
+    }
 }
 #endif
