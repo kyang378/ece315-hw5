@@ -52,6 +52,22 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    // Initialize Buttons
+    rslt = buttons_init_gpio();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("Error Initializing Buttons GPIO: %lu\n\r", rslt);
+        for(int i = 0; i < 1000000; i++); // Delay
+        CY_ASSERT(0);
+    }
+
+    //Initialize timer for debouncing
+    rslt = buttons_init_timer();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("Error Initializing Buttons Timer: %lu\n\r", rslt);
+        for(int i = 0; i < 1000000; i++); // Delay
+        CY_ASSERT(0);
+    }
+
 }
 
 /*****************************************************************************/
@@ -61,10 +77,21 @@ void app_init_hw(void)
  * @brief
  * This function implements the behavioral requirements for the ICE
  */
-void app_main(void)
-{
-    while (1)
-    {
+void app_main(void) {
+    while (1) {
+        // Check for button presses
+        if (ECE353_Events.sw1) {
+            ECE353_Events.sw1 = 0; // Clear event
+            printf("SW1 Pressed\n\r");
+        }
+        if (ECE353_Events.sw2) {
+            ECE353_Events.sw2 = 0; // Clear event
+            printf("SW2 Pressed\n\r");
+        }
+        if (ECE353_Events.sw3) {
+            ECE353_Events.sw3 = 0; // Clear event
+            printf("SW3 Pressed\n\r");
+        }
     }
 }
 #endif

@@ -3376,8 +3376,7 @@ void lcd_draw_time(uint8_t minutes, uint8_t seconds)
 		SECONDS_LSD_X_LOCATION,
 	};
 
-	for (uint8_t i = 0; i < 5; i++)
-	{
+	for (uint8_t i = 0; i < 5; i++) { //loop runs four times
 	    lcd_draw_image(
     	    locations[i],
     	    LCD_VERTICAL_CENTER,

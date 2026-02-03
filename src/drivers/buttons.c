@@ -10,13 +10,15 @@
  */
 
  #include "buttons.h"
+ #include "cyhal_timer.h"
+ #include "ece353-events.h"
+ #include "ece353-pins.h"
 
  // Static storage for previous button state (initialized to HIGH)
  static uint8_t prev_logic_level[3] = {1,1,1};
 
  // Static storage for timer and GPIO objects
  static cyhal_gpio_t button_pins[3];
- static cyhal_timer_t button_timer_obj;
 
  /**
   * @brief Initialize GPIO pins for buttons
@@ -38,15 +40,10 @@
  }
 
 
- cy_rslt_t buttons_init_timer(void) {
-    cy_rslt_t rslt = CY_RSLT_SUCCESS;
-    
-    return rslt;
- }
+
 
  void buttons_init(void) {
     buttons_init_gpio();
-    buttons_init_timer();
  }
 
 button_state_t buttons_get_state(ece353_button_t button) {
@@ -78,3 +75,58 @@ button_state_t buttons_get_state(ece353_button_t button) {
     
     return state;
  }
+
+//timer global variables
+static cyhal_timer_t button_timer;
+static cyhal_timer_cfg_t button_timer_cfg;
+
+static void button_timer_handler(void *arg, cyhal_timer_event_t event) {
+    static uint8_t button_counts[3] = {[0] = 0, [1] = 0, [2] = 0};
+
+    uint8_t sw1 = PORT_BUTTON_SW1->IN & MASK_BUTTON_SW1; //MASK_BUTTON_PIN_SW1???
+    uint8_t sw2 = PORT_BUTTON_SW2->IN & MASK_BUTTON_SW2;
+    uint8_t sw3 = PORT_BUTTON_SW3->IN & MASK_BUTTON_SW3;
+
+    //SW1 Debounce
+    if (sw1 == 0) {
+        button_counts[0]++;
+
+        if (button_counts[0] == 5) {
+            // Debounced press detected for SW1
+            ECE353_Events.sw1 = 1;
+        }
+    } else {
+        button_counts[0] = 0;
+    }
+
+    //SW2 Debounce
+    if (sw2 == 0) {
+        button_counts[1]++;
+
+        if (button_counts[1] == 5) {
+            // Debounced press detected for SW2
+            ECE353_Events.sw2 = 1;
+        }
+    } else {
+        button_counts[1] = 0;
+    }
+
+    //SW3 Debounce
+    if (sw3 == 0) {
+        button_counts[2]++;
+
+        if (button_counts[2] == 5) {
+            // Debounced press detected for SW3
+            ECE353_Events.sw3 = 1;
+        }
+    } else {
+        button_counts[2] = 0;
+    }
+}
+
+// Function to initialize the timer for button debouncing
+cy_rslt_t buttons_init_timer(void) {
+
+    //Initialize the timer for button debouncing for a period of 5ms
+    return timer_init(&button_timer, &button_timer_cfg, 500000, button_timer_handler);
+}
