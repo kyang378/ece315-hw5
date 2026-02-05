@@ -14,7 +14,7 @@
  /***************************************************************************/
  /* LEDs                                                                    */
  /***************************************************************************/
- #define PIN_LED_RED P9_0 // Does P9.0 just get translated to the address? how? - yes, because we have P6_3 = CYHAL_GET_GPIO(CYHAL_PORT_6, 3) in pin_packages (in mtb_shared folder)
+ #define PIN_LED_RED P9_0 // Does P9_0 just get translated to the address? how? - yes, because we have P6_3 = CYHAL_GET_GPIO(CYHAL_PORT_6, 3) in pin_packages (in mtb_shared folder)
  #define PIN_LED_BLUE P8_0
  #define PIN_LED_GREEN P9_2
 
@@ -45,9 +45,37 @@
 /* LCD                                                                     */
 /***************************************************************************/
 
+// Pins
+#define PIN_LCD_D0 P2_0 // LCD_DATA0
+#define PIN_LCD_D1 P2_1
+#define PIN_LCD_D2 P2_2
+#define PIN_LCD_D3 P2_3
+#define PIN_LCD_D4 P2_4
+#define PIN_LCD_D5 P2_5
+#define PIN_LCD_D6 P2_6
+#define PIN_LCD_D7 P2_7
+
+#define LCD_CSX P1_0
+#define LCD_DCX P1_1
+#define LCD_WRX P1_2
+
+// Masks to control the pins
+#define MASK_LCD_CSX (1 << 0) // P1.0
+#define MASK_LCD_DCX (1 << 1) // P1.1
+#define MASK_LCD_WRX (1 << 2) // P1.2
+
+// Ports
+#define PORT_LCD_DATA GPIO_PRT2
+#define PORT_LCD_CSX GPIO_PRT1
+#define PORT_LCD_DCX GPIO_PRT1
+#define PORT_LCD_WRX GPIO_PRT1
+
 /***************************************************************************/
 /* BUZZER                                                                  */
 /***************************************************************************/
+#define PIN_BUZZER P6_2
+#define PORT_BUZZER GPIO_PRT6
+#define MASK_BUZZER (1<<2)
 
 /***************************************************************************/
 /* Joystick                                                                */
