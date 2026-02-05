@@ -121,6 +121,7 @@ void app_main(void)
                     break;
                 case SW1_DET:
                     if (ECE353_Events.sw2) {
+                        ECE353_Events.sw2 = 0;
                         current_state = SW2_DET_1;
                     } else {
                         current_state = INIT;
@@ -148,6 +149,9 @@ void app_main(void)
                     current_state = INIT;
                     break;
             }
+
+            // CONSUME THE SW EVENTS HERE, whichever it may have been activated
+            ECE353_Events.sw1 = 0; ECE353_Events.sw2 = 0; ECE353_Events.sw3 = 0;
 
             /// leds setting logic ///
             switch (current_state) {
