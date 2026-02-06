@@ -52,9 +52,9 @@ cy_rslt_t leds_init_pwm(cyhal_pwm_t *pwm_obj_red, cyhal_pwm_t *pwm_obj_green, cy
     }
     
     // Set frequency and duty cycle
-    cyhal_pwm_set_duty_cycle(pwm_obj_red,   50.0f, 1000);   // 1 kHz, 50%
-    cyhal_pwm_set_duty_cycle(pwm_obj_green, 50.0f, 1000);
-    cyhal_pwm_set_duty_cycle(pwm_obj_blue,  50.0f, 1000);
+    cyhal_pwm_set_duty_cycle(pwm_obj_red,   0, 1000);   // 1 kHz, 0% duty cycle
+    cyhal_pwm_set_duty_cycle(pwm_obj_green, 0, 1000);
+    cyhal_pwm_set_duty_cycle(pwm_obj_blue,  0, 1000);
 
     // Start PWM
     cyhal_pwm_start(pwm_obj_red);

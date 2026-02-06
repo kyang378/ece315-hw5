@@ -3388,4 +3388,5 @@ void lcd_draw_time(uint8_t minutes, uint8_t seconds)
     	   true 
     	);
 	}
+
 }
