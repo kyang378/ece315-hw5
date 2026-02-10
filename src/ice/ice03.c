@@ -102,7 +102,7 @@ void app_main(void)
             // flow: button timer triggers timer interrupt every 5ms. When we have 5 lows
             // (asserted) for a particular button, we set that button pressed event to be 1
             // thus triggering this if statement
-            printf("Button press #%d\n\r", ++button_press_count);
+            printf("Button press #%u\n\r", ++button_press_count);
 
             // The diagram does not specify what to do if multiple buttons are pressed at the same time, so we make arbitrary decisions about priority of branches here.
 

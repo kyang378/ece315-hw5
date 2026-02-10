@@ -381,41 +381,41 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x01);
   lcd_write_data_u8(0x79);
 
-   lcd_write_cmd_u8(0xCB);
+  lcd_write_cmd_u8(0xCB);
   lcd_write_data_u8(0x39);
   lcd_write_data_u8(0x2C);
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x34);
   lcd_write_data_u8(0x02);
 
-   lcd_write_cmd_u8(0xF7);
+  lcd_write_cmd_u8(0xF7);
   lcd_write_data_u8(0x20);
 
-   lcd_write_cmd_u8(0xEA);
+  lcd_write_cmd_u8(0xEA);
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x00);
 
-   lcd_write_cmd_u8(LCD_CMD_POWER_CONTROL_2);    //Power control
+  lcd_write_cmd_u8(LCD_CMD_POWER_CONTROL_2);    //Power control
   lcd_write_data_u8(0x11);   //SAP[2:0];BT[3:0]
 
-   lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_1);    //VCM control 1
+  lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_1);    //VCM control 1
   lcd_write_data_u8(0x34);
   lcd_write_data_u8(0x3D);
 
-   lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_2);    //VCM control 2
+  lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_2);    //VCM control 2
   lcd_write_data_u8(0xC0);
 
-   lcd_write_cmd_u8(LCD_CMD_MEMORY_ACCESS_CONTROL);    // Memory Access Control
+  lcd_write_cmd_u8(LCD_CMD_MEMORY_ACCESS_CONTROL);    // Memory Access Control
   lcd_write_data_u8(0x68);
 
-   lcd_write_cmd_u8(LCD_CMD_PIXEL_FORMAT_SET);      // Pixel format
+  lcd_write_cmd_u8(LCD_CMD_PIXEL_FORMAT_SET);      // Pixel format
   lcd_write_data_u8(0x55);  //16bit
 
-   lcd_write_cmd_u8(LCD_CMD_FRAME_CONTROL_NORMAL_MODE);        // Frame rate
+  lcd_write_cmd_u8(LCD_CMD_FRAME_CONTROL_NORMAL_MODE);        // Frame rate
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x1D);  //61Hz
 
-   lcd_write_cmd_u8(0xB6);    // Display Function Control
+  lcd_write_cmd_u8(0xB6);    // Display Function Control
   lcd_write_data_u8(0x0A);
   lcd_write_data_u8(0xA2);
   lcd_write_data_u8(0x27);
@@ -425,10 +425,10 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x07);
 
 
-   lcd_write_cmd_u8(LCD_CMD_DISPLAY_FUNCTION_CONTROL);    // 3Gamma Function Disable
+  lcd_write_cmd_u8(LCD_CMD_DISPLAY_FUNCTION_CONTROL);    // 3Gamma Function Disable
   lcd_write_data_u8(0x08);
 
-   lcd_write_cmd_u8(LCD_CMD_GAMMA_SET);    //Gamma curve selected
+  lcd_write_cmd_u8(LCD_CMD_GAMMA_SET);    //Gamma curve selected
   lcd_write_data_u8(0x01);
 
 
@@ -466,10 +466,10 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x3a);
   lcd_write_data_u8(0x1f);
 
-   lcd_write_cmd_u8(LCD_CMD_SLEEP_OUT);    //Exit Sleep
-   Cy_SysLib_Delay(120);
-   lcd_write_cmd_u8(LCD_CMD_DISPLAY_ON);    //Display on
-   Cy_SysLib_Delay(50);
+  lcd_write_cmd_u8(LCD_CMD_SLEEP_OUT);    //Exit Sleep
+  Cy_SysLib_Delay(120);
+  lcd_write_cmd_u8(LCD_CMD_DISPLAY_ON);    //Display on
+  Cy_SysLib_Delay(50);
 
 }
 
