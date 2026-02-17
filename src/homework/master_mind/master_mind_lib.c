@@ -68,6 +68,8 @@ bool lcd_print_message(lcd_msg_t* msg) {
 
 //SAVE FOR FUTURE USE
 /** Draws a non-inverted tile to the LCD
+ * To draw inverted tile - the user is expected to switch the foreground and background 
+ * colors before calling this method
  * @param msg a pointer to an lcd_msg_t struct that contains the relevant tile information
  */
 bool lcd_draw_tile(lcd_msg_t* msg) {

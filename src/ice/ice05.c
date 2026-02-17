@@ -9,6 +9,9 @@
  * 
  */
 #include "main.h"
+#include "rtos_events.h"
+#include "task_buttons.h"
+#include "task_buzzer.h"
 
 #if defined(ICE05)
 #include "drivers.h"
@@ -40,7 +43,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 05 - FreeRTOS Event Groups";
  */
 void app_init_hw(void)
 {
-    cy_rslt_t rslt;
+    //cy_rslt_t rslt;
 
     console_init();
     printf("**************************************************\n\r");
@@ -51,8 +54,10 @@ void app_init_hw(void)
     printf("**************************************************\n\r");
 
     /* ADD CODE Initialize the buttons */
+    buttons_init();
 
     /* ADD CODE Initialize the buzzer */
+    buzzer_init(2000);
 }
 
 /*****************************************************************************/
@@ -65,10 +70,24 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* ADD CODE Create the event group */
+        ECE353_RTOS_Events = xEventGroupCreate();
+        if (ECE353_RTOS_Events == NULL) {
+            printf("Failed to create event group\n\r");
+            while (1); // Loop forever if event group creation fails
+        }
 
     /* ADD CODE Register the tasks with FreeRTOS*/
-    
+    if (!task_button_init()) {
+        printf("Failed to create button task\n\r");
+        while (1); // Loop forever if task creation fails
+    }
+    if (!task_buzzer_init()) {
+        printf("Failed to create buzzer task\n\r");
+        while (1); // Loop forever if task creation fails
+    }
+
     /* ADD CODE Start the scheduler*/
+    vTaskStartScheduler();
 
     /* Will never reach this loop once the scheduler starts */
     while (1)
