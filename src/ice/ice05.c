@@ -27,6 +27,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 05 - FreeRTOS Event Groups";
 /* Global Variables                                                          */
 /*****************************************************************************/
 // ADD CODE for Event Group Handle
+EventGroupHandle_t ECE353_RTOS_Events;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */

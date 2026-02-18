@@ -32,7 +32,7 @@ static void buzzer_handler(void *handler_arg, cyhal_timer_event_t event)
     (void)handler_arg;
     (void)event;
 
-    PORT_BUZZER->OUT_INV = MASK_BUZZER;
+    PORT_BUZZER->OUT ^= MASK_BUZZER;
 }
 
 /**
@@ -50,6 +50,8 @@ cy_rslt_t buzzer_init(uint32_t frequency)
     // -------------------------------------------------------
     // 1. Initialize buzzer GPIO
     // -------------------------------------------------------
+   // Cy_GPIO_Clr(PORT_BUZZER, PIN_BUZZER);  // drive low at the port level
+
     rslt = cyhal_gpio_init(PIN_BUZZER,
                            CYHAL_GPIO_DIR_OUTPUT,
                            CYHAL_GPIO_DRIVE_STRONG,
@@ -108,9 +110,10 @@ cy_rslt_t buzzer_init(uint32_t frequency)
                              true);
 
     // -------------------------------------------------------
-    // 7. Start or stop timer
+    // 7. Stop timer initially (buzzer is off by default)
     // -------------------------------------------------------
-    cyhal_timer_stop(&buzzer_timer);  // Ensure timer is stopped before starting
+        cyhal_timer_stop(&buzzer_timer);
+
 
     return rslt;
 }

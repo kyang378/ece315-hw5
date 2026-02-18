@@ -68,6 +68,7 @@ bool task_buzzer_init(void){
     {
         return false;
     }
+    return true;
 
 }
 #endif
