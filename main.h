@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 /* Uncomment the line below to enable FreeRTOS in your applications*/
-//#define ECE353_FREERTOS
+#define ECE353_FREERTOS
 
 #if defined(ECE353_FREERTOS)
 /* FreeRTOS Includes */
@@ -37,6 +37,7 @@
 #include <queue.h>
 #include <semphr.h>
 #include <task.h>
+#include "FreeRTOSConfig.h"
 #endif
 
 /* This macro is used to determine if we are building an executable for example code or ICE code.
@@ -54,13 +55,13 @@
 //#define ICE02       /* In-Class Exercise -- LCD 8080 Driver */
 //#define ICE03       /* In-Class Exercise -- Timer Interrupts/Debounce Buttons */
 //#define ICE04       /* In-Class Exercise -- PWM Buzzer */
-//#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
+#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
 //#define ICE06       /* In-Class Exercise -- FreeRTOS Queues */
 //#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
 
-#define HW01
+//#define HW01
 //#define HW02
 //#define HW03
 
