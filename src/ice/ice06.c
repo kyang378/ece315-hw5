@@ -65,7 +65,13 @@ void app_init_hw(void)
 
 void task_print_directions(void *arg)
 {
+    while (1)
+    {
+        joystick_position_t position;
+        xQueueReceive(Queue_Joystick, &position, portMAX_DELAY); // max delay to block until a new (different) position is received
 
+        printf("Joystick Position Changed: %s\n\r", Joystick_Pos_Strings[position]);
+    }
 }
 
 /*****************************************************************************/
@@ -78,8 +84,22 @@ void task_print_directions(void *arg)
 void app_main(void)
 {
     /* Initialize joystick resources */
+    joystick_init();
     
     /* Register the tasks with FreeRTOS*/
+    BaseType_t rslt = xTaskCreate(task_joystick,
+                                 "task_joystick", 
+                                 5*configMINIMAL_STACK_SIZE, 
+                                 NULL, 
+                                 tskIDLE_PRIORITY + 1, 
+                                 NULL);
+
+    rslt = xTaskCreate(task_print_directions,
+                                 "task_print_directions", 
+                                 5*configMINIMAL_STACK_SIZE, 
+                                 NULL, 
+                                 tskIDLE_PRIORITY + 1, 
+                                 NULL);
 
     /* Start the scheduler*/
     vTaskStartScheduler();

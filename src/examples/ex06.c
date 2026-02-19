@@ -49,6 +49,7 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    /* Initialize the joystick */
     rslt = joystick_init();
     if (rslt != CY_RSLT_SUCCESS)
     {
@@ -67,6 +68,7 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* Register the tasks with FreeRTOS*/
+    // 5* minimal stack size so no stack overflow (without that it would overflow)
     xTaskCreate(task_joystick, "Joystick Task", 5*configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);    
 
     /* Start the scheduler*/
