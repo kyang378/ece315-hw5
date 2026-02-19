@@ -81,7 +81,8 @@ cy_rslt_t joystick_init(void)
  */
 uint16_t  joystick_read_x(void)
 {
-    /* ADD CODE */
+    /* ADD CODE */  
+    return cyhal_adc_read_u16(&joystick_adc_chan_x_obj);
 
 }
 
@@ -92,7 +93,7 @@ uint16_t  joystick_read_x(void)
 uint16_t  joystick_read_y(void)
 {
     /* ADD CODE */
-
+    return cyhal_adc_read_u16(&joystick_adc_chan_y_obj);
 }
 
 
@@ -108,5 +109,34 @@ joystick_position_t joystick_get_pos(void)
     joystick_position_t position = JOYSTICK_POS_CENTER;
     
     /* ADD CODE */
+    x_val = joystick_read_x();
+    y_val = joystick_read_y();
+
+    bool up = y_val > JOYSTICK_THRESH_Y_UP;
+    bool down = y_val < JOYSTICK_THRESH_Y_DOWN;
+    bool left = x_val > JOYSTICK_THRESH_X_LEFT;
+    bool right = x_val < JOYSTICK_THRESH_X_RIGHT;
+
+
+    if (up && left) {
+        position = JOYSTICK_POS_UPPER_LEFT;
+    } else if (up && right) {
+        position = JOYSTICK_POS_UPPER_RIGHT;
+    } else if (down && left) {
+        position = JOYSTICK_POS_LOWER_LEFT;
+    } else if (down && right) {
+        position = JOYSTICK_POS_LOWER_RIGHT;
+    } else if (left) {
+        position = JOYSTICK_POS_LEFT;
+    } else if (right) {
+        position = JOYSTICK_POS_RIGHT;
+    } else if (up) {
+        position = JOYSTICK_POS_UP;
+    } else if (down) {
+        position = JOYSTICK_POS_DOWN;
+    } else {
+        position = JOYSTICK_POS_CENTER;
+    }
+
     return position;
 }

@@ -38,8 +38,31 @@ const char * const joystick_pos_names[] = {
  void task_joystick(void *arg)
 {
     (void)arg; // Unused parameter
+    //uint16_t x_pos, y_pos;
+    joystick_position_t previous_position = JOYSTICK_POS_CENTER;
     while(1)
     {
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+
+        /* Read the X and Y positions of the joystick
+        OLD CODE 
+        x_pos = joystick_read_x();
+        y_pos = joystick_read_y();
+
+        //convert to voltage
+        float x_voltage = (x_pos / 65535.0) * 3.3; 
+        float y_voltage = (y_pos / 65535.0) * 3.3;
+        printf("Joystick X: (%.2f V), Y: (%.2f V)\n\r", x_voltage, y_voltage); */
+
+        joystick_position_t position = joystick_get_pos();
+
+        /* Send the joystick position to the queue if not equal to previous position */
+        if (position != previous_position) {
+            xQueueSend(Queue_Joystick, &position, 0);
+            previous_position = position;
+        }
+        
     }
 }
 
@@ -47,8 +70,13 @@ const char * const joystick_pos_names[] = {
 bool task_joystick_init(void)
 {
     /* Create the Queue used to send Joystick Positions*/
-
+    Queue_Joystick = xQueueCreate(1, sizeof(joystick_position_t));
     /* Create the joystick task */
+    if (xTaskCreate(task_joystick, "Joystick Task", 256, NULL, 2, NULL) != pdPASS)
+    {
+        printf("Failed to create Joystick Task\n\r");
+        return false;
+    }
     
     return true;
 }

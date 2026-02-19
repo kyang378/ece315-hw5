@@ -77,7 +77,7 @@ void app_main(void)
             while (1); // Loop forever if event group creation fails
         }
 
-    /* ADD CODE Register the tasks with FreeRTOS*/
+    /* ADD CODE Register the tasks with FreeRTOS*/ 
     if (!task_button_init()) {
         printf("Failed to create button task\n\r");
         while (1); // Loop forever if task creation fails

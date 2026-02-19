@@ -61,7 +61,7 @@ bool task_button_init(void){
 
     BaseType_t result;
 
-    // Create the button task
+    // Create the button task 
     result = xTaskCreate(
         task_buttons, 
         "Button Task", 
