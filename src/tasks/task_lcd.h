@@ -31,9 +31,18 @@ typedef enum
 
 typedef struct
 {
-    lcd_msg_t       msg;
-    QueueHandle_t   return_queue;
+    lcd_msg_t       msg;           // The actual LCD message
+    QueueHandle_t   return_queue;  // Optional
 } lcd_msg_request_t;
+
+//Necessary? You added this.
+//Expand this typedef for other commands related to the lcd
+typedef enum
+{
+    LCD_CLEAR_SCREEN = 0,
+    LCD_PRINT_SW1_COUNT,
+    LCD_PRINT_SW2_COUNT,
+} lcd_cmd_t;
 
 /* LCD Task Initialization */
 bool task_lcd_resources_init(QueueHandle_t queue_request);

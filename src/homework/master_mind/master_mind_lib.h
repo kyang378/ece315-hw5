@@ -83,6 +83,8 @@ typedef enum {
     LCD_CMD_DRAW_TILE_INVERTED,      // Highlight exactly one box
     LCD_CMD_PRINT_MESSAGE,          // Print status/instruction text
     LCD_CMD_CLEAR_SCREEN,           // Optional: clear whole screen
+    LCD_CMD_PRINT_SW1_COUNT,
+    LCD_CMD_PRINT_SW2_COUNT,
 } lcd_command_t;
 
 
@@ -223,5 +225,7 @@ static inline bool lcd_tile_rect(lcd_rect_t *r, lcd_row_t row, uint8_t col)
 /* Function Prototypes                                                          */
 /********************************************************************************/
 bool master_mind_handle_msg(lcd_msg_t* msg);
+
+bool lcd_print_message(lcd_msg_t* msg, uint16_t currX, uint16_t currY);
 
 #endif // __MASTER_MIND_H__

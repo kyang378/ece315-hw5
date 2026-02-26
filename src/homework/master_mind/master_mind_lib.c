@@ -18,10 +18,7 @@
 /** prints a text message to the LCD
  * @param msg a pointer to an lcd_msg_t struct that contains the message to be printed
  */
-bool lcd_print_message(lcd_msg_t* msg) {
-    //used to track current location
-    uint16_t currX = 0;
-    uint16_t currY = 0;
+bool lcd_print_message(lcd_msg_t* msg, uint16_t currX, uint16_t currY) {
 
     //iterate until null terminator
     for (int i = 0; msg->payload.message[i] != '\0'; i++) {
@@ -120,7 +117,7 @@ bool master_mind_handle_msg(lcd_msg_t* msg) {
         switch(msg->command) {
             case LCD_CMD_PRINT_MESSAGE:
                 //see above method for implementation
-                return lcd_print_message(msg);
+                return lcd_print_message(msg, 0, 0);
             case LCD_CMD_DRAW_TILE:
                 //see above method for implementation
                 return lcd_draw_tile(msg);;

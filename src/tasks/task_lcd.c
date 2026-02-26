@@ -10,6 +10,8 @@
  */
 
  #include "task_lcd.h"
+ #include "lcd-io.h"
+ #include "master_mind_lib.h"
 
 #if defined(ECE353_FREERTOS)
 
@@ -27,6 +29,23 @@ void task_lcd(void *pvParameters)
 
     while(1)
     {
+        xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
+
+        switch (lcd_request.msg.command) {
+            case LCD_CMD_CLEAR_SCREEN:
+                lcd_clear_screen(LCD_COLOR_BLACK);
+                break;
+            case LCD_CMD_PRINT_SW1_COUNT:
+                lcd_print_message(&lcd_request.msg, 10, 50);
+                break;
+            case LCD_CMD_PRINT_SW2_COUNT:
+                lcd_print_message(&lcd_request.msg, 10, 100);
+                break;
+
+            default:
+                status = false;
+                break;
+        }
     }
 }
 

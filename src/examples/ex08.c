@@ -26,6 +26,8 @@ char APP_DESCRIPTION[] = "ECE353: Example 08 - FreeRTOS LCD Gatekeeper";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
+QueueHandle_t xQueue_Request_LCD = NULL;
+EventGroupHandle_t ECE353_RTOS_Events = NULL;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -34,6 +36,69 @@ char APP_DESCRIPTION[] = "ECE353: Example 08 - FreeRTOS LCD Gatekeeper";
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
+
+
+void task_sw1(void *pvParameters) {
+    uint32_t button_count = 0;
+    uint32_t debounce_count = 0;
+    lcd_msg_request_t lcd_request;
+
+    for(;;) {
+        vTaskDelay(pdMS_TO_TICKS(25));
+
+        //check button
+        if ((PORT_BUTTON_SW1->IN & MASK_BUTTON_SW1) == 0) {
+            if (debounce_count <= 40) {
+                debounce_count++;
+            }
+        } else {
+            debounce_count = 0;
+        }
+
+        if (debounce_count == 40) {
+            button_count++;
+
+            lcd_request.cmd = LCD_PRINT_SW1_COUNT;
+            lcd_request.return_queue = NULL;
+            //printf("SW1 raw string: '%s'\n", lcd_request.string);
+            snprintf(lcd_request.string, sizeof(lcd_request.string), "sw1 count %lu", button_count);
+
+            //Send message to LCD task
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+}
+
+void task_sw2(void *pvParameters) {
+    uint32_t button_count = 0;
+    uint32_t debounce_count = 0;
+    lcd_msg_request_t lcd_request;
+
+    for(;;) {
+        vTaskDelay(pdMS_TO_TICKS(25));
+
+        //check button
+        if ((PORT_BUTTON_SW2->IN & MASK_BUTTON_SW2) == 0) {
+            if (debounce_count <= 40) {
+                debounce_count++;
+            }
+        } else {
+            debounce_count = 0;
+        }
+
+        if (debounce_count == 40) {
+            button_count++;
+
+            lcd_request.cmd = LCD_PRINT_SW2_COUNT;
+            lcd_request.return_queue = NULL;
+            snprintf(lcd_request.string, sizeof(lcd_request.string), "sw2 count %lu", button_count);
+
+            //Send message to LCD task
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+}
+
 void task_system_control(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
@@ -104,10 +169,12 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
-    
-    /* Register the tasks with FreeRTOS*/
 
+    /* Register the tasks with FreeRTOS*/
     ECE353_RTOS_Events = xEventGroupCreate();
+
+    //create message queue for LCD requests
+    xQueue_Request_LCD = xQueueCreate(10, sizeof(lcd_msg_request_t));
 
     /* Initialize the Button Task resources */
     if (!task_button_init())
@@ -117,14 +184,42 @@ void app_main(void)
         CY_ASSERT(0); // If the task initialization fails, assert
     }
 
-    /* Initialize LCD resources */
-    if (!task_lcd_init())
+    /* Initialize LCD resources */ 
+    if (!task_lcd_resources_init(xQueue_Request_LCD))
     {
         printf("Failed to initialize lcd task\n\r");
         for(int i = 0; i < 100000; i++) {}
        CY_ASSERT(0); // If the task initialization fails, assert
     }
 
+    //Initialize switch tasks
+    if (xTaskCreate(
+        task_sw1,
+        "SW1 Task", 
+        2*configMINIMAL_STACK_SIZE, 
+        NULL, 
+        tskIDLE_PRIORITY + 1U, 
+        NULL
+        ) != pdPASS) {
+            printf("SW1 task creation failed\n\r");
+            for (int i = 0; i < 100000; i++) {}
+            CY_ASSERT(0);
+        }
+
+    if (xTaskCreate(
+        task_sw2,
+        "2W1 Task", 
+        2*configMINIMAL_STACK_SIZE, 
+        NULL, 
+        tskIDLE_PRIORITY + 1U, 
+        NULL
+        ) != pdPASS) {
+            printf("SW2 task creation failed\n\r");
+            for (int i = 0; i < 100000; i++) {}
+            CY_ASSERT(0);
+        }    
+
+    /*
     xTaskCreate(
         task_system_control, 
         "Task System Control", 
@@ -133,6 +228,7 @@ void app_main(void)
         tskIDLE_PRIORITY + 1, 
         NULL
     );
+    */
 
     /* Start the scheduler*/
     vTaskStartScheduler();
