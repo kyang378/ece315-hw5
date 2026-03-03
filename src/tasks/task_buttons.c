@@ -39,7 +39,7 @@
             xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW1_PRESSED);
         }
 
-        // Monitor button SW2
+        // Monitor button SW2 
         if (buttons_get_state(BUTTON_SW2) == BUTTON_STATE_FALLING_EDGE)
         {
             xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW2_PRESSED);

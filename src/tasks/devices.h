@@ -60,5 +60,9 @@ typedef struct {
     } payload;
 } device_response_msg_t ;
 
+//queues used
+extern QueueHandle_t Queue_Requests_Joystick;
+extern QueueHandle_t Queue_LCD;
+
 #endif
 #endif /* __DEVICES_H__ */

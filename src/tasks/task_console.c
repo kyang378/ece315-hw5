@@ -32,11 +32,58 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
 
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
     {
-        // ADD CODE 
+        // ADD CODE ICE09
+        
+        //read in character CYHAL_UART getc
+        cyhal_uart_getc(&cy_retarget_io_uart_obj, &c, 0);
+
+        //echo back to hardware FIFO CYHAL_UART putc
+        cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
+
+        //if character is backspace or delete
+        if ((c == '\b' || c == 127) && produce_console_buffer->index > 0) {
+            //remove last character from the array
+            produce_console_buffer->index--;
+            produce_console_buffer->data[produce_console_buffer->index] = '\0';
+        }
+        else if (c == '\n' || c == '\r')
+        {
+            // Ignore duplicate CR/LF (CRLF or LFCR)
+            if (produce_console_buffer->index == 0)
+                return;
+                
+            //null terminate string
+            produce_console_buffer->data[produce_console_buffer->index] = '\0';
+            
+            //swap the role of produce and consume buffers
+            console_buffer_t *temp = produce_console_buffer;
+            produce_console_buffer = consume_console_buffer;
+            consume_console_buffer = temp;
+
+            // Reset new produce buffer
+            produce_console_buffer->index = 0;
+            produce_console_buffer->data[0] = '\0';
+
+
+            //send task notification to the bottom half task task_console_rx
+            vTaskNotifyGiveFromISR(TaskHandle_Console_Rx, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }else {
+            // Prevent overflow
+            if (produce_console_buffer->index < CONSOLE_MAX_MESSAGE_LENGTH - 1)
+            {
+                produce_console_buffer->data[produce_console_buffer->index] = c;
+                produce_console_buffer->index++;
+            }
+        }
     }
     if ((event & CYHAL_UART_IRQ_TX_EMPTY) == CYHAL_UART_IRQ_TX_EMPTY)
     {
-        /* ADD CODE */
+        /* ADD CODE ICE10*/
+
+        //if circular buffer is empty, disable tx empty interrupts
+
+        //else (buffer is not empty) get next char from buffer and place into hardware transmit register (CYHAL_UART putc)
     }
     else
     {

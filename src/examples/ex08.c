@@ -64,7 +64,7 @@ void task_sw1(void *pvParameters) {
             snprintf(lcd_request.string, sizeof(lcd_request.string), "sw1 count %lu", button_count);
 
             //Send message to LCD task
-            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY); 
         }
     }
 }

@@ -27,6 +27,12 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 #define ECE353_EVENT_SW2_PRESSED (1 << 1)  // Event bit for SW2 pressed
 #define ECE353_EVENT_SW3_PRESSED (1 << 2)  // Event bit for SW3 pressed
 
+#define ECE353_EVENT_JOYSTICK_UP        (1 << 4)
+#define ECE353_EVENT_JOYSTICK_DOWN      (1 << 5)
+#define ECE353_EVENT_JOYSTICK_LEFT      (1 << 6)
+#define ECE353_EVENT_JOYSTICK_RIGHT     (1 << 7)
+
+
 
 #endif // ECE353_FREERTOS
 
