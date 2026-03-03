@@ -28,8 +28,11 @@ EventGroupHandle_t ECE353_RTOS_Events = NULL;
 
 /**
  * @brief helper function to move current selection tile
- * Assumes the switch is always legal and that inputs are
- * available tiles
+ * Assumes the switch is always legal (and correct) 
+ * and that inputs are available tiles.
+ * 
+ * @param currTile The current selected tile that will be deselected
+ * @param nextTile The next tile to be selected
  */
 void switchSelectTiles(int currTile, int nextTile) {
     //message used to draw the tiles
@@ -69,6 +72,39 @@ void switchSelectTiles(int currTile, int nextTile) {
     master_mind_handle_msg(&msg);
 }
 
+/**
+ * @brief Helper function to add the selected tile
+ * to the cypher.
+ * 
+ * @param currSelectTile The tile with the number to be added
+ * @param currCypherTile The current position in the cypher
+ */
+void addToCypher(int currSelectTile, int currCypherTile) {
+    //redraw the current cypher tile with the new number
+    //and without the inverted color
+    lcd_msg_t msg;
+    msg.command = LCD_CMD_DRAW_TILE;
+    msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+    msg.payload.tile.col = currCypherTile;          //by our convention, our cypher tile number is its column
+    msg.payload.tile.number = currSelectTile;       //the selected number
+    msg.payload.tile.color_fg = LCD_COLOR_RED;
+    msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    master_mind_handle_msg(&msg);
+
+    //select the next cypher tile only if we are not at the end
+    if(currCypherTile != 4) {
+        msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+        msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+        msg.payload.tile.col = currCypherTile + 1; //next cypher tile
+        msg.payload.tile.number = 0;               //default
+        msg.payload.tile.color_fg = LCD_COLOR_RED;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    
+        master_mind_handle_msg(&msg);
+    }
+    
+}
+
 void task_hw02_system_control(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
@@ -95,7 +131,7 @@ void task_hw02_system_control(void *pvParameters)
         msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
         msg.payload.tile.col = col;
         msg.payload.tile.number = 0; // number is ignored for code tiles
-        msg.payload.tile.color_fg = LCD_COLOR_ORANGE;
+        msg.payload.tile.color_fg = LCD_COLOR_RED;
         msg.payload.tile.color_bg = LCD_COLOR_BLACK;
         master_mind_handle_msg(&msg);
     }
@@ -132,11 +168,11 @@ void task_hw02_system_control(void *pvParameters)
 
     /* Allow the user to select 4 numbers for their cypher */
     int currCyhperTile = 0; //0-3
-    int nextCypherTile = 0;
     int currSelectTile = 0; //0-7
     int nextSelectTile = 0;
     while(1)
     {
+
         //wait for some event bit to trigger
         EventBits_t events = xEventGroupWaitBits(
             ECE353_RTOS_Events,
@@ -181,22 +217,22 @@ void task_hw02_system_control(void *pvParameters)
                 switchSelectTiles(currSelectTile, nextSelectTile);
                 currSelectTile = nextSelectTile;
             }
-        }
+        } else if (events & ECE353_EVENT_SW1_PRESSED) {
+            //select current tile
+            addToCypher(currSelectTile, currCyhperTile);
+            //increment place in cypher
+            currCyhperTile++;
+            if (currCyhperTile == 4) {
+                //Once cypher is made, wait forever
+                while(1){
+                    //Do nothing
+                }
+            }
 
-        //TODO IMPLEMENT SELECTION
-        //TODO once cypher is made, lock input
-        //TODO TODO TODO TODO TODO TODO
-        //TODO TODO TODO TODO TODO TODO
-        //TODO TODO TODO TODO TODO TODO
-        //TODO TODO TODO TODO TODO TODO
-        //TODO TODO TODO TODO TODO TODO
-        //TODO TODO TODO TODO TODO TODO
+        }
 
     }
 }
-
-
-
 
 
 /*************************************************

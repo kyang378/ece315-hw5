@@ -32,6 +32,7 @@ void task_hw02_system_control(void *pvParameters);
 void task_hw02_system_joystick(void *pvParameters);
 void task_hw02_system_buttons(void *pvParameters);
 void switchSelectTiles(int currTile, int nextTile);
+void addToCypher(int currSelectTile, int currCypherTile);
 
  #endif
 
