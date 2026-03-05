@@ -29,17 +29,12 @@
 
 /* ADD CODE*/
 /* Global Variables */
-
+TaskHandle_t TaskHandle_Console_Tx;
 //Allocate space for transmit queue
 QueueHandle_t console_tx_queue = NULL;
 
 //Allocate space for circular buffer
-//TODO TODO TODO TODO TODO 
-//TODO TODO TODO TODO TODO 
-//TODO TODO TODO TODO TODO 
-//TODO TODO TODO TODO TODO 
-//TODO TODO TODO TODO TODO 
-
+circular_buffer_t *circular_buffer_tx = NULL;
 
 /**
  * @brief 
@@ -56,16 +51,30 @@ void task_console_tx(void *param)
         /* ADD CODE */
 
         //wait for console_buffer_t messages from queue
-
+        xQueueReceive(console_tx_queue, &tx_msg, portMAX_DELAY);
         //for loop: examine the message and copy each byte into the circular buffer
+        for (uint32_t i = 0; tx_msg.data[i] != '\0'; i++)
+        {
             //if buffer is full, vTaskDelay(5);
+            while (circular_buffer_full(circular_buffer_tx))
+                {
+                    vTaskDelay(pdMS_TO_TICKS(5));
+                }
 
             //add next byte to the buffer
+            circular_buffer_add(circular_buffer_tx, tx_msg.data[i]);
+        }
+            
+        //printf("Enabling TX interrupt");
+        //enable the transmit empty interrupts
+        cyhal_uart_enable_event(&cy_retarget_io_uart_obj,
+                            CYHAL_UART_IRQ_TX_EMPTY,
+                            CYHAL_ISR_PRIORITY_DEFAULT,
+                            true);
 
-            //enable the transmit empty interrupts
 
         //free the data that was sent from the console_buffer_t
-
+        vPortFree(tx_msg.data);
     }
 }
 
@@ -82,9 +91,28 @@ bool task_console_resources_init_tx(void)
 
     /* ADD CODE */
 
-    //initialize the Tx freeRTOS queue
+    // initialize the Tx FreeRTOS queue
+    console_tx_queue = xQueueCreate(CONSOLE_QUEUE_LENGTH, sizeof(console_buffer_t));
 
-    //initialize the circular buffer, do NOT need to register a handler, do not enable transmit empty interrupts
+    // initialize the circular buffer
+    circular_buffer_tx = circular_buffer_init(CONSOLE_MAX_MESSAGE_LENGTH);
+
+    // ensure TX empty interrupts start disabled
+    cyhal_uart_enable_event(&cy_retarget_io_uart_obj,
+                            CYHAL_UART_IRQ_TX_EMPTY,
+                            CYHAL_ISR_PRIORITY_DEFAULT,
+                            false);
+
+   // printf("Creating task_console_tx\n");
+    //create the task
+    rslt = xTaskCreate(
+        task_console_tx,
+        "Console Tx",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        &TaskHandle_Console_Tx
+    );
 
 
     if (rslt != pdPASS)
@@ -117,7 +145,7 @@ void task_console_printf(char *str_ptr, ...)
 
     /* ADD CODE */
     /* Allocate the message buffer */
-
+    message_buffer = pvPortMalloc(CONSOLE_MAX_MESSAGE_LENGTH);
     if (message_buffer)
     {
         va_start(args, str_ptr);
@@ -132,10 +160,14 @@ void task_console_printf(char *str_ptr, ...)
 
         /* ADD CODE */
         /* Initialize the console buffer */
-
+        console_buffer.data = message_buffer;
+        console_buffer.index = 0;
         /* ADD CODE */
         /* The receiver task is responsible to free the memory from here on */
+        xQueueSend(console_tx_queue, &console_buffer, portMAX_DELAY);
 
+        //need to free : vPortFree
+        //vPortFree(message_buffer);
     }
     else
     {

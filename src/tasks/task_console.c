@@ -82,8 +82,21 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
         /* ADD CODE ICE10*/
 
         //if circular buffer is empty, disable tx empty interrupts
+        if (circular_buffer_empty(circular_buffer_tx)) {
+            cyhal_uart_enable_event(
+                &cy_retarget_io_uart_obj, 
+                CYHAL_UART_IRQ_TX_EMPTY, 
+                7, 
+                false);
+        } else {
+            // Remove next character from circular buffer
+            char next_char;
+            circular_buffer_remove(circular_buffer_tx,&next_char);
 
-        //else (buffer is not empty) get next char from buffer and place into hardware transmit register (CYHAL_UART putc)
+            // Transmit it
+            cyhal_uart_putc(&cy_retarget_io_uart_obj, next_char);
+
+        }
     }
     else
     {
