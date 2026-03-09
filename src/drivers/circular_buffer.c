@@ -87,7 +87,7 @@ bool circular_buffer_empty(circular_buffer_t *buffer)
    */
   if (buffer->produce_count == buffer->consume_count)
   {
-    return true;
+    return true; // empty when produce and consume counts are equal
   }
   else
   {
@@ -109,9 +109,11 @@ bool circular_buffer_full(circular_buffer_t *buffer)
    * the circular buffer is full
    */
 
+  // note the produce count is always >= the consume count, as we cannot consume data that has not been produced yet.
+  // so, we can just check the difference between the two counts to determine if the circular buffer is full
   if ((buffer->produce_count - buffer->consume_count) == buffer->max_size)
   {
-    return true;
+    return true; // full when the number of bytes in the buffer (produce - consume) is equal to the max size of the buffer, as this is the point where we cannot add more data without overwriting unconsumed data
   }
   else
   {
@@ -127,7 +129,6 @@ bool circular_buffer_full(circular_buffer_t *buffer)
 //*******************************************************************************
 bool circular_buffer_add(circular_buffer_t *buffer, char c)
 {
-  /* ADD CODE */
 
   // Use the function defined above to determine if the circular buffer is full
   // If the circular buffer is full, return false.

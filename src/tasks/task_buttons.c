@@ -10,6 +10,7 @@
  */
 
  #include "task_buttons.h"
+ #include "task_console.h"
 
  #ifdef ECE353_FREERTOS
  /**
@@ -40,7 +41,7 @@
 
             if (button_count[0] == 2) // so a debouncing of 30ms
             {
-                printf("SW1 pressed\n\r");
+                task_console_printf("SW1 pressed\n\r");
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW1_PRESSED);
             }
         }
@@ -56,7 +57,7 @@
 
             if (button_count[1] == 2)
             {
-                printf("SW2 pressed\n\r");
+                task_console_printf("SW2 pressed\n\r");
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW2_PRESSED);
             }
         }
@@ -72,7 +73,7 @@
 
             if (button_count[2] == 2)
             {
-                printf("SW3 pressed\n\r");
+                task_console_printf("SW3 pressed\n\r");
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW3_PRESSED);
             }
         }
@@ -91,6 +92,15 @@
 bool task_button_init(void){
 
     BaseType_t result;
+
+    // Initialize the buttons
+    cy_rslt_t rslt = buttons_init_gpio();
+    if(rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Button initialization failed!\n\r");
+        for(int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+    }
 
     // Create the button task
     result = xTaskCreate(

@@ -10,11 +10,13 @@
  */
 #include "main.h"
 
-#if defined(ICE09)
+#if defined(ICE10)
+#include "buzzer.h"
 #include "drivers.h"
+#include "task_buttons.h"
 #include "task_console.h"
 
-char APP_DESCRIPTION[] = "ECE353: ICE 09 - FreeRTOS UART IRQs";
+char APP_DESCRIPTION[] = "ECE353: ICE 10 - FreeRTOS UART Tx IRQs";
 
 /*****************************************************************************/
 /* Macros                                                                    */
@@ -23,6 +25,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 09 - FreeRTOS UART IRQs";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
+EventGroupHandle_t ECE353_RTOS_Events;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -49,16 +52,14 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
-    // initialize the leds
+    // Initialize the LEDs
     rslt = leds_init_gpio();
-    if (rslt != CY_RSLT_SUCCESS) 
+    if(rslt != CY_RSLT_SUCCESS)
     {
-        printf("Error initializing LEDs\n\r");
+        printf("LED initialization failed!\n\r");
+        for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }
-
-    
-
 }
 
 /*****************************************************************************/
@@ -70,6 +71,16 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
+    // Initialize the EventGroup
+    ECE353_RTOS_Events = xEventGroupCreate();
+
+    if(!task_button_init())
+    {
+        printf("Buttons initialization failed!\n\r");
+        for(int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+    }
+
     if(!task_console_init())
     {
         printf("Console initialization failed!\n\r");

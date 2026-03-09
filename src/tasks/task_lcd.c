@@ -21,12 +21,41 @@ void task_lcd(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
 
-    lcd_msg_request_t lcd_request;
+    lcd_msg_request_t lcd_request; // buffer where the received item will be copied into
     lcd_msg_response_t response;
     bool status = false;
 
     while(1)
     {
+        xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
+
+        switch (lcd_request.msg.command) {
+            case LCD_CMD_CLEAR_SCREEN:
+            {
+                /* Clear the screen */
+                // we have already wrote the function for parsing the message and doing the command
+                master_mind_handle_msg(&lcd_request.msg);
+                break;
+            }
+            case LCD_CMD_PRINT_SW1_COUNT:
+            {
+                /* Print out the number of times SW1 has been pressed onto the LCD with a vertical offset of 50 pixels.*/
+                master_mind_handle_msg(&lcd_request.msg);
+                break;
+            }
+            case LCD_CMD_PRINT_SW2_COUNT:
+            {
+                /* Print out the number of times SW2 has been pressed with a vertical offset of 100 pixels*/
+                master_mind_handle_msg(&lcd_request.msg);
+                break;
+            }
+            default:
+            {
+                /* Invalid command */
+                status = false;
+            }
+            break;
+        }
     }
 }
 

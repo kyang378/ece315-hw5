@@ -26,6 +26,8 @@ char APP_DESCRIPTION[] = "ECE353: ICE 08 - FreeRTOS LCD Gatekeeper";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
+EventGroupHandle_t ECE353_RTOS_Events = NULL;
+QueueHandle_t xQueue_Request_LCD = NULL;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -34,14 +36,84 @@ char APP_DESCRIPTION[] = "ECE353: ICE 08 - FreeRTOS LCD Gatekeeper";
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
-void task_system_control(void *pvParameters)
+void task_sw1(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
 
+    uint32_t button_count = 0;
+    uint32_t debounce_count = 0;
+    lcd_msg_request_t lcd_request;
+
+    printf("Starting Task SW1\n\r");
     while(1)
     {
-        // Sleep for 100 ms
-        vTaskDelay(pdMS_TO_TICKS(100));
+        // Sleep for 25 ms
+        vTaskDelay(pdMS_TO_TICKS(25));
+        // check the button
+        if ((PORT_BUTTON_SW1->IN & MASK_BUTTON_PIN_SW1) == 0) // active low button
+        {
+            if (debounce_count <= 40)
+            {
+                debounce_count++;
+            }
+        }
+        else {
+            debounce_count = 0;
+        }
+
+        if (debounce_count == 40)
+        {
+            // increment button_count and create the lcd message
+            button_count++;
+            lcd_request.msg.command = LCD_CMD_PRINT_SW1_COUNT;
+            lcd_request.return_queue = NULL; // no message expected in return from gatekeeper
+            
+            snprintf(lcd_request.msg.payload.message, sizeof(lcd_request.msg.payload.message), "SW1 Count: %lu", (unsigned long)button_count);
+
+            // send the message to task_LCD
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
+    }
+}
+
+void task_sw2(void *pvParameters)
+{
+    (void)pvParameters; // Unused parameter
+
+    uint32_t button_count = 0;
+    uint32_t debounce_count = 0;
+    lcd_msg_request_t lcd_request; // request to be formed and sent out
+
+    printf("Starting Task SW2\n\r");
+    while(1)
+    {
+        // Sleep for 25 ms
+        vTaskDelay(pdMS_TO_TICKS(25));
+
+        // check the button
+        if ((PORT_BUTTON_SW2->IN & MASK_BUTTON_PIN_SW2) == 0) // active low button
+        {
+            if (debounce_count <= 40)
+            {
+                debounce_count++;
+            }
+        }
+        else {
+            debounce_count = 0;
+        }
+
+        if (debounce_count == 40)
+        {
+            // increment button_count and create the lcd message
+            button_count++;
+            lcd_request.msg.command = LCD_CMD_PRINT_SW2_COUNT;
+            lcd_request.return_queue = NULL; // no message expected in return from gatekeeper
+            
+            snprintf(lcd_request.msg.payload.message, sizeof(lcd_request.msg.payload.message), "SW2 Count: %lu", (unsigned long)button_count);
+
+            // send the message to task_LCD
+            xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+        }
     }
 }
 
@@ -69,6 +141,15 @@ void app_init_hw(void)
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
+
+    rslt = buttons_init_gpio();
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Buttons initialization failed!\n\r");
+        for(int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
+    }
+
 }
 
 /*****************************************************************************/
@@ -85,28 +166,31 @@ void app_main(void)
 
     ECE353_RTOS_Events = xEventGroupCreate();
 
-    /* Initialize LCD resources */
-    if (!task_lcd_init())
+    /* Create the LCD Request Queue*/
+    xQueue_Request_LCD = xQueueCreate(10, sizeof(lcd_msg_request_t));
+
+    /* Initialize the LCD task */
+    // this function binds the static global queue from task_lcd.c to the queue in the argument
+    if (!task_lcd_resources_init(xQueue_Request_LCD))
     {
-        printf("Failed to initialize joystick task\n\r");
-        for(int i = 0; i < 100000; i++) {}
-       CY_ASSERT(0); // If the task initialization fails, assert
+        printf("LCD Task Resource Initialization Failed!\n\r");
+        for (int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
     }
 
-    /* Start the buttons task*/
     xTaskCreate(
-        task_buttons, 
-        "Task Buttons", 
-        configMINIMAL_STACK_SIZE, 
+        task_sw1, 
+        "Task SW1", 
+        configMINIMAL_STACK_SIZE*2, 
         NULL, 
         tskIDLE_PRIORITY + 1, 
         NULL
     );
 
     xTaskCreate(
-        task_system_control, 
-        "Task System Control", 
-        configMINIMAL_STACK_SIZE*5, 
+        task_sw2, 
+        "Task SW2", 
+        configMINIMAL_STACK_SIZE*2, 
         NULL, 
         tskIDLE_PRIORITY + 1, 
         NULL

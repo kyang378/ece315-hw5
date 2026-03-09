@@ -15,6 +15,52 @@
 #include "lcd-fonts.h"
 
 
+// helper function to print messages onto the LCD with a variable starting point
+// ex. want a vertical offset of 50 => let initial_y be 50
+// ex. for LCD_CMD_PRINT_MESSAGE, initial_x = LCD_MARGIN, initial_y = lcd_text_area_center_y()
+bool master_mind_print_string (lcd_msg_t *msg, int initial_x, int initial_y) {
+    int offset_x = 0; // how much to offset the x coordinate for each subsequent char, initialized to 0 for the first char
+            
+    // loop through each char (so at most 32 times) in the message string, each time drawing one char and updating offset_x
+    for (int i = 0; i < 32; i++)
+    {
+        if (msg->payload.message[i] == '\0') // stop when we reach the end of the string
+        {
+            break;
+        }
+
+        // 1. get the index for the current char
+
+        // check if the char is valid first
+        if (msg->payload.message[i] < Consolas_20ptFontInfo.start_char || msg->payload.message[i] > Consolas_20ptFontInfo.end_char)
+        {
+            printf("Error: invalid char in message\n\r");
+            return false;
+        }
+        uint16_t index = msg->payload.message[i] - Consolas_20ptFontInfo.start_char; 
+
+
+        // 2. get the font character info for the current char using the index
+        FONT_CHAR_INFO info = Consolas_20ptDescriptors[index];
+
+
+        // 3. get the bitmap for the current character to be drawn
+        const uint8_t *bitmap = Consolas_20ptBitmaps + info.offset;
+
+
+        // 4. draw the image - here no way for user of this function to specify color
+        // so we just use white for foreground and black for background
+        lcd_draw_image(initial_x + offset_x, initial_y, info.width, info.height, bitmap, LCD_COLOR_WHITE, LCD_COLOR_BLACK, true);
+
+        
+        // 5. update the offset_x for the next char, so that the next char is drawn to the right of the current char
+
+        // offset given by half the width of the current char + half the width of the next char
+        offset_x += info.width/2 + Consolas_20ptDescriptors[index + 1].width/2;
+    }
+    return true;
+}
+
 
 /**
  * @brief 
@@ -83,48 +129,16 @@ bool master_mind_handle_msg(lcd_msg_t* msg)
             return master_mind_handle_msg(msg); // recursive call to draw the tile
 
         case LCD_CMD_PRINT_MESSAGE: // payload as char messsage[32] and print it to the text area
-            int first_x = LCD_MARGIN; // draw from the margin of the text area
-            int offset_x = 0; // how much to offset the x coordinate for each subsequent char, initialized to 0 for the first char
-            
-            // loop through each char (so at most 32 times) in the message string, each time drawing one char and updating offset_x
-            for (int i = 0; i < 32; i++)
-            {
-                if (msg->payload.message[i] == '\0') // stop when we reach the end of the string
-                {
-                    break;
-                }
+            // for LCD_CMD_PRINT_MESSAGE, initial_x = LCD_MARGIN, initial_y = lcd_text_area_center_y()
+            return master_mind_print_string(msg, LCD_MARGIN, lcd_text_area_center_y());
 
-                // 1. get the index for the current char
+        case LCD_CMD_PRINT_SW1_COUNT:
+            // print out the received string to the LCD, starting at (10, 50)
+            return master_mind_print_string(msg, 10, 50);
 
-                // check if the char is valid first
-                if (msg->payload.message[i] < Consolas_20ptFontInfo.start_char || msg->payload.message[i] > Consolas_20ptFontInfo.end_char)
-                {
-                    printf("Error: invalid char in message\n\r");
-                    return false;
-                }
-                uint16_t index = msg->payload.message[i] - Consolas_20ptFontInfo.start_char; 
-
-
-                // 2. get the font character info for the current char using the index
-                FONT_CHAR_INFO info = Consolas_20ptDescriptors[index];
-
-
-                // 3. get the bitmap for the current character to be drawn
-                const uint8_t *bitmap = Consolas_20ptBitmaps + info.offset;
-
-
-                // 4. draw the image - here no way for user of this function to specify color
-                // so we just use white for foreground and black for background
-                lcd_draw_image(first_x + offset_x, lcd_text_area_center_y(), info.width, info.height, bitmap, LCD_COLOR_WHITE, LCD_COLOR_BLACK, true);
-
-                
-                // 5. update the offset_x for the next char, so that the next char is drawn to the right of the current char
-
-                // offset given by half the width of the current char + half the width of the next char
-                offset_x += info.width/2 + Consolas_20ptDescriptors[index + 1].width/2;
-            }
-
-            return true;
+        case LCD_CMD_PRINT_SW2_COUNT:
+            // same thing, just print the string specified by sw2 task starting at (10, 100)
+            return master_mind_print_string(msg, 10, 100);
 
         case LCD_CMD_CLEAR_SCREEN:
             lcd_clear_screen(LCD_COLOR_BLACK);

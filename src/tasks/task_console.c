@@ -13,7 +13,8 @@
 #ifdef ECE353_FREERTOS  
 /**
  * @brief 
- * This function is the event handler for the console UART.
+ * This function is the event handler for the console UART. This is the ISR for both
+ * the transmit and receive interrupts.
  *
  * The ISR will receive characters from the UART and store them in a console buffer
  * until the user presses the ENTER key.  At that point, the ISR will send a task
@@ -28,15 +29,86 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
 {
     (void)handler_arg;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    uint8_t c;
+    uint8_t c; // the character received from the UART
 
+    // QUESTION: I don't understand this &
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
     {
-        // ADD CODE 
+        // Read in the character
+        cyhal_uart_getc(&cy_retarget_io_uart_obj, &c, 0);
+
+        // Echo the character to the hardware FIFO, which will send it back to the console, so the user can see what they typed.
+        cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
+
+        // if character is equal to backspace or the delete key,
+        // remove the last character from the array
+        if (c == '\b' || c == 127) // 127 is the ASCII code for delete
+        {
+            // QUESTION: should this be consume or produce buffer? - consume, because we want to delete the last character that was added to the buffer, which is the one that the user just typed and then backspaced over; the produce buffer is the one that we are currently adding characters to, so if we backspace, we want to remove the last character from the produce buffer, which is the same as the consume buffer at this point because we haven't swapped them yet.
+
+            if (consume_console_buffer->index > 0) // if there is something to delete
+            {
+                consume_console_buffer->index--; // move the index back by one, effectively deleting the last character
+                
+                // QUESTION: not sure if we should do this
+                // safer to always append a null terminator. Even if the user later do a \n 
+                // or \r, this auto-populated \0 would be overwritten.
+                consume_console_buffer->data[consume_console_buffer->index] = '\0'; // null terminate the string at the new index
+            }
+        }
+        // else if the current charcter is the \n or \r 
+        else if (c == '\n' || c == '\r')
+        {
+            // null terminate the string
+            consume_console_buffer->data[consume_console_buffer->index] = '\0';
+            
+            // swap the role of the produce and consume buffers beofre sending a task notification for the bottom half task to process the received string
+            console_buffer_t *temp = produce_console_buffer;
+            produce_console_buffer = consume_console_buffer;
+            consume_console_buffer = temp;
+
+            // the second argument (the flag) indicates if we need to yield to a different 
+            // task than the one that is interrupted. If our bottom half task does have a higher priority than the currently running task, then this xHigherPriorityTaskWoken boolean flag will be set to 1.
+
+            // then, portYIELD_FROM_ISR() will check the value of xHigherPriorityTaskWoken, and if it is 1, it will yield to the higher priority task that was just woken up by the task notification. If it is 0, then it will continue executing the current task after the ISR finishes (and when the current task finishes its time slice, then we would run the bottom half task)
+
+
+            // change the index back to 0 for the next round of receiving characters first
+            produce_console_buffer->index = 0; // reset the index for the next message
+
+            // so the difference we make by doing the following two lines, is so that when
+            // our bottom half test does have a higher priority than the current one, instead of waiting for the current task to finish its time slice, we can immediately switch to the bottom half task right after the ISR finishes, which allows us to process the received console command with lower latency.
+            vTaskNotifyGiveFromISR(TaskHandle_Console_Rx, &xHigherPriorityTaskWoken);
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // yield to the bottom half task
+
+        }else {
+            // else, add the character to the buffer and increment the index
+            produce_console_buffer->data[produce_console_buffer->index] = c;
+
+            // ensure there is space for the null terminator (?)
+            if (produce_console_buffer->index < CONSOLE_MAX_MESSAGE_LENGTH - 1) 
+            {
+                produce_console_buffer->index++;
+            }
+        }
     }
+
+    // if the UART's hardware TX FIFO is empty, we can accept another block of data into our FIFO to send to the console, by giving a task notification to the bottom-half task (console Tx task) to send the next block of data in the circular buffer to the hardware FIFO
     if ((event & CYHAL_UART_IRQ_TX_EMPTY) == CYHAL_UART_IRQ_TX_EMPTY)
     {
-        /* ADD CODE */
+        // first, we want to make sure there is actually data in the circular buffer
+        // if it's empty, we would disable the transmit-empty interrupt, so we don't keep getting interrupts when there is no data to send
+        if (circular_buffer_empty(circular_buffer_tx))
+        {
+            cyhal_uart_enable_event(&cy_retarget_io_uart_obj, CYHAL_UART_IRQ_TX_EMPTY, 7, false);
+        }
+        
+        // if the circular buffer is not empty, get the next character from the circular buffer and send it to the hardware FIFO
+        if (!circular_buffer_empty(circular_buffer_tx))
+        {
+            circular_buffer_remove(circular_buffer_tx, (char*) &c);
+            cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
+        }
     }
     else
     {
