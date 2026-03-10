@@ -28,6 +28,9 @@ void task_lcd(void *pvParameters)
     while(1)
     {
         xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
+        printf("LCD recv cmd=%d msg=%s\n\r",
+            lcd_request.msg.command,
+            lcd_request.msg.payload.message);
 
         switch (lcd_request.msg.command) {
             case LCD_CMD_CLEAR_SCREEN:
@@ -39,13 +42,13 @@ void task_lcd(void *pvParameters)
             }
             case LCD_CMD_PRINT_SW1_COUNT:
             {
-                /* Print out the number of times SW1 has been pressed onto the LCD with a vertical offset of 50 pixels.*/
+                /* Print out the number of times SW1 has been pressed onto the LCD starting at (10,50). Handled by the master_mind_handle_msg function */
                 master_mind_handle_msg(&lcd_request.msg);
                 break;
             }
             case LCD_CMD_PRINT_SW2_COUNT:
             {
-                /* Print out the number of times SW2 has been pressed with a vertical offset of 100 pixels*/
+                /* Print out the number of times SW2 has been pressed onto the LCD starting at (10,100). Handled by the master_mind_handle_msg function */
                 master_mind_handle_msg(&lcd_request.msg);
                 break;
             }

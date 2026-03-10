@@ -55,6 +55,7 @@ void task_sw1(void *pvParameters)
             if (debounce_count <= 40)
             {
                 debounce_count++;
+                printf("TEST: button_count incremented.\n\r");
             }
         }
         else {
@@ -68,10 +69,12 @@ void task_sw1(void *pvParameters)
             lcd_request.msg.command = LCD_CMD_PRINT_SW1_COUNT;
             lcd_request.return_queue = NULL; // no message expected in return from gatekeeper
             
+            // print the string into the payload of the message of our lcd request using snprintf
             snprintf(lcd_request.msg.payload.message, sizeof(lcd_request.msg.payload.message), "SW1 Count: %lu", (unsigned long)button_count);
 
             // send the message to task_LCD
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
+            printf("SW1 send: %s\n\r", lcd_request.msg.payload.message);
         }
     }
 }
@@ -110,6 +113,7 @@ void task_sw2(void *pvParameters)
             lcd_request.return_queue = NULL; // no message expected in return from gatekeeper
             
             snprintf(lcd_request.msg.payload.message, sizeof(lcd_request.msg.payload.message), "SW2 Count: %lu", (unsigned long)button_count);
+            printf("SW2 pressed, count=%lu\n\r", (unsigned long)button_count);
 
             // send the message to task_LCD
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
@@ -161,15 +165,15 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
-    
-    /* Register the tasks with FreeRTOS*/
-
+    // Create the RTOS event group, which will be used for the button events. 
     ECE353_RTOS_Events = xEventGroupCreate();
-
+    
     /* Create the LCD Request Queue*/
     xQueue_Request_LCD = xQueueCreate(10, sizeof(lcd_msg_request_t));
 
-    /* Initialize the LCD task */
+
+    /* Register the tasks with FreeRTOS*/
+
     // this function binds the static global queue from task_lcd.c to the queue in the argument
     if (!task_lcd_resources_init(xQueue_Request_LCD))
     {
@@ -195,6 +199,10 @@ void app_main(void)
         tskIDLE_PRIORITY + 1, 
         NULL
     );
+
+    // clear the screen (so we start with a black screen and we print strings in white)
+    lcd_clear_screen(LCD_COLOR_BLACK);
+    printf("TEST2: cleared the screen\n\r");
 
     /* Start the scheduler*/
     vTaskStartScheduler();
