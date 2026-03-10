@@ -16,6 +16,10 @@
 /* FreeRTOS Queue for LCD messages */
 static QueueHandle_t Queue_Requests = NULL;
 
+#if defined(HW02)
+static QueueHandle_t Queue_Requests_HW02 = NULL;
+#endif
+
 /* LCD Task */
 void task_lcd(void *pvParameters)
 {
@@ -90,4 +94,65 @@ bool task_lcd_resources_init(QueueHandle_t queue_request){
 
     return true;
 }
+
+#if defined(HW02)
+void task_hw02_system_lcd(void *pvParameters)
+{
+    (void)pvParameters; // Unused parameter
+
+    lcd_msg_request_t lcd_request;
+    lcd_msg_response_t response;
+    bool status;
+
+    if (Queue_Requests_HW02 == NULL)
+    {
+        CY_ASSERT(0);
+    }
+
+    while(1)
+    {
+        if (xQueueReceive(Queue_Requests_HW02, &lcd_request, portMAX_DELAY) != pdPASS)
+        {
+            continue;
+        }
+
+        /* For HW02, system control never touches the LCD directly.
+           Instead it sends a lcd_msg_request_t here, and this gatekeeper task
+           is the one that actually calls master_mind_handle_msg(). */
+        status = master_mind_handle_msg(&lcd_request.msg);
+        response = status ? LCD_MSG_RESPONSE_SUCCESS : LCD_MSG_RESPONSE_ERROR;
+
+        if (lcd_request.return_queue != NULL)
+        {
+            // send back the status of the operation
+            xQueueSend(lcd_request.return_queue, &response, 0);
+        }
+    }
+}
+
+bool task_hw02_system_lcd_resources_init(QueueHandle_t queue_request)
+{
+    BaseType_t result;
+
+    /* Same idea as the HW02 joystick task: hw02.c owns the queue creation,
+       while this init function just stores the queue handle and creates the task. */
+    if (queue_request == NULL)
+    {
+        return false;
+    }
+
+    Queue_Requests_HW02 = queue_request;
+
+    result = xTaskCreate(
+        task_hw02_system_lcd,
+        "task_hw02_system_lcd",
+        TASK_HW02_SYSTEM_LCD_STACK_SIZE,
+        NULL,
+        TASK_HW02_SYSTEM_LCD_PRIORITY,
+        NULL
+    );
+
+    return result == pdPASS;
+}
+#endif
 #endif

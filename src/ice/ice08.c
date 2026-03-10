@@ -114,7 +114,6 @@ void task_sw2(void *pvParameters)
             
             snprintf(lcd_request.msg.payload.message, sizeof(lcd_request.msg.payload.message), "SW2 Count: %lu", (unsigned long)button_count);
             printf("SW2 pressed, count=%lu\n\r", (unsigned long)button_count);
-
             // send the message to task_LCD
             xQueueSend(xQueue_Request_LCD, &lcd_request, portMAX_DELAY);
         }
@@ -202,7 +201,6 @@ void app_main(void)
 
     // clear the screen (so we start with a black screen and we print strings in white)
     lcd_clear_screen(LCD_COLOR_BLACK);
-    printf("TEST2: cleared the screen\n\r");
 
     /* Start the scheduler*/
     vTaskStartScheduler();

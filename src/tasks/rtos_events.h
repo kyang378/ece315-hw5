@@ -31,6 +31,7 @@
 #define ECE353_EVENT_BUTTON_SW1_PRESSED   (1 << 0)    // Event bit 0
 #define ECE353_EVENT_BUTTON_SW2_PRESSED   (1 << 1)    
 #define ECE353_EVENT_BUTTON_SW3_PRESSED   (1 << 2)
+#define ECE353_EVENT_JOYSTICK_CHANGED     (1 << 3)
 
 #endif // ECE353_FREERTOS
 

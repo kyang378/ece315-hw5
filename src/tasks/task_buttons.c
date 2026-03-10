@@ -41,7 +41,11 @@
 
             if (button_count[0] == 2) // so a debouncing of 30ms
             {
+                // this is really probably also true for other exercises...
+                // we're not creating the console_task in hw02.c
+                #if !defined(HW02)
                 task_console_printf("SW1 pressed\n\r");
+                #endif
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW1_PRESSED);
             }
         }
@@ -57,7 +61,9 @@
 
             if (button_count[1] == 2)
             {
+                #if !defined(HW02)
                 task_console_printf("SW2 pressed\n\r");
+                #endif
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW2_PRESSED);
             }
         }
@@ -73,7 +79,9 @@
 
             if (button_count[2] == 2)
             {
+                #if !defined(HW02)
                 task_console_printf("SW3 pressed\n\r");
+                #endif
                 xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW3_PRESSED);
             }
         }

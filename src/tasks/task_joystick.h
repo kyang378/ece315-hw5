@@ -16,11 +16,22 @@
 #include <complex.h>
 
 #ifdef ECE353_FREERTOS
+#if defined(HW02)
+#define TASK_HW02_SYSTEM_JOYSTICK_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
+#define TASK_HW02_SYSTEM_JOYSTICK_PRIORITY      (tskIDLE_PRIORITY + 1)
+#define TASK_HW02_SYSTEM_JOYSTICK_POLL_MS       (50)
+#endif
+
 extern QueueHandle_t Queue_Joystick;
 
 void task_joystick(void *arg);
 
 bool task_joystick_init(void);
+
+#if defined(HW02)
+void task_hw02_system_joystick(void *arg);
+bool task_hw02_system_joystick_resources_init(QueueHandle_t queue_joystick);
+#endif
 
 #endif
 #endif /* __TASK_JOYSTICK_H__ */

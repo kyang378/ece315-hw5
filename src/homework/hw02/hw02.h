@@ -21,9 +21,10 @@
 #include "task_buttons.h"
 #include "task_joystick.h"
 #include "devices.h"
+#include "master_mind_lib.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
-#define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
+#define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1)  
 
 /*****************************************************************************/
 /* Function Definitions                                                      */
