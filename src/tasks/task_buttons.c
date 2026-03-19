@@ -37,21 +37,21 @@
         // Monitor button SW1
         if (buttons_get_state(BUTTON_SW1) == BUTTON_STATE_FALLING_EDGE)
         {
-            task_console_printf("SW1 Pressed \n");
+            //task_console_printf("SW1 Pressed \n"); //TODO for some reason, this is incompatible with HW02
             xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW1_PRESSED);
         }
 
         // Monitor button SW2 
         if (buttons_get_state(BUTTON_SW2) == BUTTON_STATE_FALLING_EDGE)
         {
-            task_console_printf("SW2 Pressed\n");
+            //task_console_printf("SW2 Pressed\n");
             xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW2_PRESSED);
         }
 
         // Monitor button SW3
         if (buttons_get_state(BUTTON_SW3) == BUTTON_STATE_FALLING_EDGE)
         {
-            task_console_printf("SW3 Pressed\n");
+            //task_console_printf("SW3 Pressed\n");
             xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW3_PRESSED);
         }
 
@@ -65,7 +65,7 @@ bool task_button_init(void){
 
     BaseType_t result;
 
-    buttons_init();
+    //buttons_init();
 
     // Create the button task 
     result = xTaskCreate(
@@ -84,4 +84,12 @@ bool task_button_init(void){
 
     return true;
 }
+
+ bool task_buttons_init(void) {
+    task_button_init();
+ }
+ 
+ bool task_buttons_resources_init(void){
+    task_button_init();
+ }
 #endif

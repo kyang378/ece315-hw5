@@ -13,7 +13,6 @@
 
 #if defined(ECE353_FREERTOS)
 #include "task_ipc.h"
-#include "task_console.h"
 
 /* Globals */
 TaskHandle_t TaskHandle_IPC_Rx = NULL;
@@ -45,7 +44,74 @@ void task_ipc_rx(void *param)
         // Wait for a FreeRTOS Task Notification
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        /* ADD CODE */
+        if(validate_packet((ipc_packet_t *)IPC_Rx_Consume_Buffer) == true) 
+        {
+            /* ADD CODE */
+            // Process the received IPC packet
+            switch (IPC_Rx_Consume_Buffer->cmd) {
+                case IPC_CMD_DISCOVERY:
+                {
+                    printf("Received discovery message. \n\r");
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_DISCOVERY_RECEIVED);
+                    break;
+                }
+                case IPC_CMD_ACK:
+                {
+                    //set the event
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_ACK_RECEIVED);
+                    break;
+                }
+                case IPC_CMD_ACTIVE_PLAYER:
+                {
+                    printf("Received active player message \n\r");
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+
+                    break;
+                }
+                case IPC_CMD_INACTIVE_PLAYER:
+                {
+                    printf("Received inactive player message \n\r");
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+                    break;
+                }
+                case IPC_CMD_STATUS:
+                {
+                    ipc_status_t status = IPC_Rx_Consume_Buffer->payload.status;
+
+                    switch(status)
+                    {
+                        case IPC_STATUS_OK:
+                            printf("Received status: OK\n\r");
+                            break;
+
+                        case IPC_STATUS_CRC_FAIL:
+                            printf("Received status: CRC FAIL\n\r");
+                            break;
+
+                        case IPC_STATUS_INVALID_MSG_TYPE:
+                            printf("Received status: INVALID MESSAGE TYPE\n\r");
+                            break;
+
+                        default:
+                            printf("Received status: UNKNOWN (0x%02X)\n\r", status);
+                            break;
+
+                        
+                    }
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+                    break;
+                }
+                default:
+                {
+                    printf("Received unknown/unsupported message type. \n\r");
+                    break;
+                }
+            }
+        }
+        else {
+            printf("Invalid IPC packet received!\n\r");
+        }
     }
 }
 
@@ -55,9 +121,9 @@ bool task_ipc_resources_init_rx(void)
     BaseType_t task_ipc_rx_status = xTaskCreate(
         task_ipc_rx,                 // Function that implements the task.
         "IPC Rx Task",               // Text name for the task.
-        5*configMINIMAL_STACK_SIZE,    // Stack size in words, not bytes.
+        IPC_STACK_SIZE,             // Stack size in words, not bytes.
         NULL,                       // Parameter passed into the task.
-        tskIDLE_PRIORITY + 1,       // Priority at which the task is created.
+        IPC_PRIORITY,               // Priority at which the task is created.
         &TaskHandle_IPC_Rx          // Used to pass out the created task's handle.
     );
 

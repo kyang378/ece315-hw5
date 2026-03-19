@@ -23,14 +23,21 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 /*******************************************************************************
 * Macros used to define the system events
 ******************************************************************************/
+//Switches
 #define ECE353_EVENT_SW1_PRESSED (1 << 0)  // Event bit for SW1 pressed
 #define ECE353_EVENT_SW2_PRESSED (1 << 1)  // Event bit for SW2 pressed
 #define ECE353_EVENT_SW3_PRESSED (1 << 2)  // Event bit for SW3 pressed
 
+//Joystick
 #define ECE353_EVENT_JOYSTICK_UP        (1 << 4)
 #define ECE353_EVENT_JOYSTICK_DOWN      (1 << 5)
 #define ECE353_EVENT_JOYSTICK_LEFT      (1 << 6)
 #define ECE353_EVENT_JOYSTICK_RIGHT     (1 << 7)
+
+//IPC - verify this is correct if not working
+#define ECE353_EVENT_IPC_ACK_RECEIVED           (1<<9)
+#define ECE353_EVENT_IPC_DISCOVERY_RECEIVED     (1 << 10)
+
 
 
 

@@ -32,6 +32,7 @@ cyhal_uart_cfg_t IPC_Uart_Config =
 
 uint32_t IPC_Actual_Baud;
 
+
 /**
  * @brief 
  * Simple checksum calculation function.  Take the XOR of all bytes
@@ -51,56 +52,159 @@ static __inline uint8_t calculate_checksum(ipc_packet_t *packet)
 
 /**
  * @brief 
- * This function is used to send a "fire" command to the opponent
- * @param row 
- * @param col 
- * @return true 
- * @return false 
+ * Validates the given IPC packet by checking the start byte and checksum
+ * @param packet 
+ * @return __inline 
  */
-bool ipc_send_fire(uint8_t row, uint8_t col)
+bool validate_packet(ipc_packet_t *packet)
 {
-    /* ADD CODE */
+    uint8_t checksum = 0;
+
+    // Check that the packet pointer is valid
+    if(packet == NULL)
+    {
+        return false;
+    }
+
+
+    // Check for the start byte
+    if(packet->start_byte != IPC_PACKET_START)
+    {
+        return false;
+    }
+
+    // Calculate the checksum
+    checksum = calculate_checksum(packet);
+
+    // Validate the checksum
+    return (checksum == packet->checksum);
+}
+
+/********************************************************************/
+/* Helper Functions for sending IPC packets                         */
+/********************************************************************/
+/* ADD CODE */
+/* Look at task_ipc.h to find the list of helper functions */
+
+/**
+ * @brief 
+ * 
+ * @param sequence_num the sequence number of the packet to send
+ * @return true if packet sucessfully transmits
+ * @return false if packet is not received
+ */
+bool ipc_send_discovery(uint16_t sequence_num) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_DISCOVERY,
+        .sequence_num = sequence_num,
+        //ADD INITIALIZATION DATA RELATED TO PAYLOAD BELOW
+        //For this function, nothing else is needed
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100) != pdTRUE)) {
+        return false;
+    }
     return true;
 }
 
 /**
- * @brief 
- *  This function is used to send a "result" command to the opponent
- * @param result 
- * @return true 
- * @return false 
+ * @brief Waits for an acknowledgement from an external board
+ * 
+ * @param timeout_ms how long to wait before returning a failure
+ * @return true if an ack is received
+ * @return false if an ack is not received
  */
-bool ipc_send_result(ipc_result_t result)
-{
-    /* ADD CODE */
-    return true;
+bool ipc_wait_for_ack(uint32_t timeout_ms) {
+    EventBits_t events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                             ECE353_EVENT_IPC_ACK_RECEIVED,
+                                             pdTRUE,
+                                             pdFALSE,
+                                             pdMS_TO_TICKS(timeout_ms));
+    return (events & ECE353_EVENT_IPC_ACK_RECEIVED) != 0;
 }
 
 /**
- * @brief 
- * This function is used to send a "game control" command to the opponent
- * @param control 
- * @return true 
- * @return false 
+ * @brief Acknowledges reception of a packet
+ * 
+ * @param sequence_num the sequence number of the received packet
+ * @return true if the ack is sucessfully sent
+ * @return false if the ack fails to send
  */
-bool ipc_send_game_control(ipc_game_control_t control)
-{
-    /* ADD CODE */
+bool ipc_send_ack(uint16_t sequence_num) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_ACK,
+        .sequence_num = sequence_num,
+        //ADD INITIALIZATION DATA RELATED TO PALOAD BELOW
+        //for this function, nothing else is needed
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return false;
+    }
     return true;
 }
 
-/**
- * @brief 
- * This function is used to send an "error" command to the opponent
- * @param error 
- * @return true 
- * @return false 
- */
-bool ipc_send_error(ipc_error_t error)
-{
-    /* ADD CODE */
+
+
+bool ipc_send_active_player(uint16_t sequence_num) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_ACTIVE_PLAYER,
+        .sequence_num = sequence_num,
+        //ADD INITIALIZATION DATA RELATED TO PALOAD BELOW
+        //for this function, nothing else is needed
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return false;
+    }
     return true;
 }
+
+bool ipc_send_inactive_player(uint16_t sequence_num) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_INACTIVE_PLAYER,
+        .sequence_num = sequence_num,
+        //ADD INITIALIZATION DATA RELATED TO PALOAD BELOW
+        //for this function, nothing else is needed
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return false;
+    }
+    return true;
+}
+
+bool ipc_send_status(uint16_t sequence_num, ipc_status_t status) {
+    ipc_packet_t packet = {
+        .start_byte = IPC_PACKET_START,
+        .cmd = IPC_CMD_STATUS,
+        .sequence_num = sequence_num,
+        //ADD INITIALIZATION DATA RELATED TO PALOAD BELOW
+        //for this function, nothing else is needed
+        .payload.status = status,
+    };
+
+    packet.checksum = calculate_checksum(&packet);
+
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
+        return false;
+    }
+    return true;
+}
+
+
 
 /**
  * @brief
@@ -118,7 +222,55 @@ void ipc_event_handler(void *handler_arg, cyhal_uart_event_t event)
 
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
     {
+        // Read the received character
+        if (cyhal_uart_getc(&IPC_Uart_Obj, &c, 0) == CY_RSLT_SUCCESS) {
+            if (raw_data_index == 0) { //if we are expecting the start byte
+                if(c == IPC_PACKET_START) {
+                    //store start byte
+                    ((uint8_t*)IPC_Rx_Produce_Buffer)[0] = c;
+                    raw_data_index = 1;
+                } else { //not ready to start - ignore
+                    //do nothing
+                }
+            } else { //we are in the middle of a packet
+                //Store next byte
+                ((uint8_t*)IPC_Rx_Produce_Buffer)[raw_data_index++] = c;
+                if (raw_data_index >= sizeof(ipc_packet_t)){ //if we have finished the packet
+                    //swap buffers
+                    volatile ipc_packet_t* temp = IPC_Rx_Produce_Buffer;
+                    IPC_Rx_Produce_Buffer = IPC_Rx_Consume_Buffer;
+                    IPC_Rx_Consume_Buffer = temp;
+
+                    //reset index
+                    raw_data_index = 0;
+
+                    //notify RX task
+                    vTaskNotifyGiveFromISR(TaskHandle_IPC_Rx, &xHigherPriorityTaskWoken);
+                }
+            }
+        }
+
+
+
         /* ADD CODE */
+            //IN THIS FILE:
+                //generate an interrupt every time data is received
+                //use cyhal_uart_getc to receive data
+                //make sure you are using UART for inter-processor communication and not any other UART
+                //In interrupt handler: use double buffering
+                    //Send task notification when entire packet has arrived (most likely to task_ipc_rx)
+                    //Swap produce and consume buffer
+
+        /* You will need to determine when a new packet is starting and then store the packet
+         * byte by byte into the produce buffer.  Once all the bytes have been received, 
+         * send a TaskNotification to the bottom half task to parse and process the packet.  
+         * 
+         * You will also need to toggle the produce and consume buffers
+         *
+         * The raw_data_index variable can be used to keep track of how many bytes have been received for the current packet.
+         * When raw_data_index is 0, the next byte received should be the start byte
+         */
+        
     }
     if ((event & CYHAL_UART_IRQ_TX_EMPTY) == CYHAL_UART_IRQ_TX_EMPTY)
     {
@@ -126,6 +278,8 @@ void ipc_event_handler(void *handler_arg, cyhal_uart_event_t event)
     else
     {
     }
+    //potentially not necessary
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 bool task_ipc_init(void)
@@ -162,7 +316,7 @@ bool task_ipc_init(void)
     cyhal_uart_enable_event(
         &IPC_Uart_Obj,
         CYHAL_UART_IRQ_RX_NOT_EMPTY,
-        INT_PRIORITY_IPC,
+        3,
         true
     );
 
