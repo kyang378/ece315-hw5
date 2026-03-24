@@ -25,6 +25,20 @@ void imu_write_reg(
     uint8_t value
 )
 {
+    //write 2 bytes: Register address and value
+    uint8_t tx_buffer[2];
+    uint8_t rx_buffer[2];
+    tx_buffer[0] = reg & 0x7F; //clear for write
+    tx_buffer[1] = value;
+
+    //Pull CS low to select the IMU
+    cyhal_gpio_write(cs_pin, 0);
+
+    //Send data over SPI
+    cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
+
+    //Pull CS high to deselect IMU
+    cyhal_gpio_write(cs_pin, 1);
 }
 
 /**
@@ -39,6 +53,21 @@ uint8_t imu_read_reg(
     uint8_t reg
 )
 {
+    uint8_t tx_buffer[2];
+    uint8_t rx_buffer[2];
+    tx_buffer[0] = reg | 0x80; //set MSB for read
+    tx_buffer[1] = 0xFF;    //dummy byte
+
+    //Pull CS low to select the IMU
+    cyhal_gpio_write(cs_pin, 0);
+
+    //send data over SPI
+    cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
+
+    //Pull CS high to deselect IMU
+    cyhal_gpio_write(cs_pin, 1);
+
+    return rx_buffer[1];
 }
 
 /**
@@ -56,6 +85,23 @@ void imu_read_registers(
     uint8_t length
 )
 {
+    uint8_t tx_buffer[1 + length];
+    uint8_t rx_buffer[1 + length];
+    tx_buffer[0] = reg | 0x80; //Set MSB for read and auto-increment. IF ERRORS, may be 0x40 instead of 0x4D, check ex13 video
+    //memset(&tx_buffer[1], 0xFF, length); //fill with dummy bytes
+
+    //Pull CS low to select the IMU
+    cyhal_gpio_write(cs_pin, 0);
+
+    //send data over SPI
+    cyhal_spi_transfer(spi_obj, tx_buffer, 1 + length, rx_buffer, 1 + length, 0xFF);
+
+    //Pull CS high to deselect IMU
+    cyhal_gpio_write(cs_pin, 1);
+
+    //copy data to the buffer
+    memcpy(buffer, &rx_buffer[1], length);
+
 }
 
 /**

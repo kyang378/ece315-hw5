@@ -37,14 +37,47 @@ static cyhal_gpio_t eeprom_cs_pin = NC;
  * @return true 
  * @return false 
  */
-bool system_sensors_eeprom_write(QueueHandle_t return_queue, uint16_t address, uint8_t data)
+bool system_sensors_eeprom_write(
+    QueueHandle_t return_queue,
+    uint16_t address,
+    uint8_t data)
 {
     device_request_msg_t request;
     device_response_msg_t response;
 
-    // ADD CODE
+    // Fill out the request packet
+    request.device = DEVICE_EEPROM;
+    request.operation = DEVICE_OP_WRITE;
+    request.address = address;
+    request.value = data;
+    request.response_queue = return_queue;
 
-    return true;
+    // Send the request to the EEPROM task
+    if (xQueueSend(
+            Queue_EEPROM_Requests,
+            &request,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    // If caller does NOT want a response, we are done
+    if (return_queue == NULL)
+    {
+        return true;
+    }
+
+    // Caller wants confirmation — wait for the response
+    if (xQueueReceive(
+            return_queue,
+            &response,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    // Check if the write succeeded
+    return (response.status == DEVICE_OPERATION_STATUS_WRITE_SUCCESS);
 }   
 
 /**
@@ -60,17 +93,53 @@ bool system_sensors_eeprom_write(QueueHandle_t return_queue, uint16_t address, u
  * @return true 
  * @return false 
  */
-bool system_sensors_eeprom_read(QueueHandle_t return_queue, uint16_t address, uint8_t *data)
+bool system_sensors_eeprom_read(
+    QueueHandle_t return_queue,
+    uint16_t address,
+    uint8_t *data)
 {
     device_request_msg_t request;
     device_response_msg_t response;
 
-    if(return_queue == NULL || data == NULL)
+    // Validate inputs
+    if (return_queue == NULL || data == NULL)
     {
         return false;
     }
 
-    // ADD CODE 
+    // Fill out the request packet
+    request.device = DEVICE_EEPROM;
+    request.operation = DEVICE_OP_READ;
+    request.address = address;
+    request.value = 0;                 // Not used for reads
+    request.response_queue = return_queue;
+
+    // Send the request to the EEPROM task
+    if (xQueueSend(
+            Queue_EEPROM_Requests,
+            &request,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    // Wait for the EEPROM task to respond
+    if (xQueueReceive(
+            return_queue,
+            &response,
+            portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    // Check if the read succeeded
+    if (response.status != DEVICE_OPERATION_STATUS_READ_SUCCESS)
+    {
+        return false;
+    }
+
+    // Extract the EEPROM byte
+    *data = response.payload.eeprom;
 
     return true;
 }
@@ -81,8 +150,9 @@ bool system_sensors_eeprom_read(QueueHandle_t return_queue, uint16_t address, ui
  * @param arg 
  */
 void task_eeprom(void *arg)
- {
+{
     (void) arg;
+
     device_request_msg_t request_packet;
     device_response_msg_t response_packet;
 
@@ -90,14 +160,64 @@ void task_eeprom(void *arg)
 
     while(1)
     {
-        // Wait for a request to arrive
+        // Wait for a request from any task
         xQueueReceive(
-            Queue_EEPROM_Requests, 
-            &request_packet, 
+            Queue_EEPROM_Requests,
+            &request_packet,
             portMAX_DELAY
         );
 
-        /* ADD CODE */  
+        // Prepare the response header
+        response_packet.device = DEVICE_EEPROM;
+
+        // Claim exclusive access to the SPI bus
+        xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
+
+        if(request_packet.operation == DEVICE_OP_WRITE)
+        {
+            // Perform the write
+            eeprom_write_byte(
+                eeprom_spi_obj,
+                eeprom_cs_pin,
+                request_packet.address,
+                request_packet.value
+            );
+
+            response_packet.status =
+                DEVICE_OPERATION_STATUS_WRITE_SUCCESS;
+        }
+        else if(request_packet.operation == DEVICE_OP_READ)
+        {
+            // Perform the read
+            uint8_t val = eeprom_read_byte(
+                eeprom_spi_obj,
+                eeprom_cs_pin,
+                request_packet.address
+            );
+
+            response_packet.payload.eeprom = val;
+            response_packet.status =
+                DEVICE_OPERATION_STATUS_READ_SUCCESS;
+        }
+        else
+        {
+            // Should never happen, but safe to handle
+            response_packet.status =
+                DEVICE_OPERATION_STATUS_READ_FAILURE;
+        }
+
+        // Release the SPI bus
+        xSemaphoreGive(*SPI_Semaphore);
+
+        // Send response back if caller provided a queue
+        if(request_packet.response_queue != NULL)
+        {
+            xQueueSend(
+                request_packet.response_queue,
+                &response_packet,
+                portMAX_DELAY
+            );
+        }
     }
 }
 

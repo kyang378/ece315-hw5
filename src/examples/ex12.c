@@ -53,6 +53,24 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
+    //Init spi interface
+    SPI_Obj = spi_init(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCLK);
+    if(SPI_Obj == NULL) {
+        printf("SPI initialization failed\n\r");
+        for (int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+        
+    }
+
+    //initialize IMU CS pin
+    rslt = cyhal_gpio_init(PIN_IMU_CS, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, true);
+
+    if(rslt != CY_RSLT_SUCCESS) {
+        printf("IMU CS pin initialization failed\n\r");
+        for (int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+    }
+
 }
 
 /*****************************************************************************/
@@ -67,6 +85,17 @@ void app_main(void)
     if(!task_console_init())
     {
         printf("Console initialization failed!\n\r");
+        for(int i = 0; i < 10000; i++);
+        CY_ASSERT(0);
+    }
+
+    //Create SPI Semaphore and ensure available
+    Spi_Semaphore = xSemaphoreCreateBinary();
+    xSemaphoreGive(Spi_Semaphore);
+
+    //Initialize IMU Resources
+    if(!task_imu_resources_init(&Spi_Semaphore, SPI_Obj, PIN_IMU_CS)) {
+        printf("IMU Task initialization failed\n\r");
         for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }

@@ -57,17 +57,43 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
     device_request_msg_t request;
     device_response_msg_t response;
 
+    //array for accelerometer data
+    int16_t accel_data[3];
+
+    //grab semaphore
+    xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
+
     if(!imu_init(imu_spi_obj, imu_cs_pin))
     {
-        CY_ASSERT(0);
+        task_console_printf("IMU Initialization failed \n\r");
+        vTaskSuspend(NULL);
+        //CY_ASSERT(0);
+    } else {
+        task_console_printf("IMU initialization successful");
     }
+    //give semaphore
+    xSemaphoreGive(*SPI_Semaphore);
 
     while(1)
     {
         /* Wait for a request to be available */
-        xQueueReceive(Queue_IMU_Request, &request, portMAX_DELAY);
+        //xQueueReceive(Queue_IMU_Request, &request, portMAX_DELAY);
+
+        vTaskDelay(pdMS_TO_TICKS(250));
 
         /* ADD CODE */  
+        xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY);
+
+        //read accelerometer data
+        imu_read_registers(imu_spi_obj, imu_cs_pin, IMU_REG_OUTX_L_XL, (uint8_t *)accel_data, 6);
+
+        //give back the semaphore
+        xSemaphoreGive(*SPI_Semaphore);
+
+        //print the accelerometer data
+        task_console_printf("Accel x: %d, Accel y: %d\n\r", accel_data[0], accel_data[1]);
+
+        
     }
 }
 
@@ -94,12 +120,13 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
     imu_cs_pin = cs_pin;
 
     /* Create the IMU Request Queue */
+    /*
     Queue_IMU_Request = xQueueCreate(1, sizeof(device_request_msg_t));
     if(Queue_IMU_Request == NULL)
     {
         return false;
     }
-
+    
     /* Create the IMU Task */
    if (xTaskCreate(
        task_imu, 
