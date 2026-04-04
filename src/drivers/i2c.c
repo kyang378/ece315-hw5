@@ -27,8 +27,11 @@ cyhal_i2c_t * i2c_init(cyhal_gpio_t sda, cyhal_gpio_t scl)
 {
 	cy_rslt_t rslt;
 
+	cyhal_i2c_t *i2c_obj = pvPortMalloc(sizeof(cyhal_i2c_t)); //you added this
+
 	// Initialize I2C master, set the SDA and SCL pins and assign a new clock
-	rslt = cyhal_i2c_init(&i2c_monarch_obj, sda, scl, NULL);
+	rslt = cyhal_i2c_init(i2c_obj, sda, scl, NULL); //you added this
+	//rslt = cyhal_i2c_init(&i2c_monarch_obj, sda, scl, NULL);
 
 	if (rslt != CY_RSLT_SUCCESS)
 	{
@@ -36,13 +39,15 @@ cyhal_i2c_t * i2c_init(cyhal_gpio_t sda, cyhal_gpio_t scl)
 	}
 
 	// Configure the I2C resource to be master
-	rslt = cyhal_i2c_configure(&i2c_monarch_obj, &i2c_monarch_config);
+	rslt = cyhal_i2c_configure(i2c_obj, &i2c_monarch_config);
+	//rslt = cyhal_i2c_configure(&i2c_monarch_obj, &i2c_monarch_config);
 	if (rslt != CY_RSLT_SUCCESS)
 	{
 		return NULL;
 	}
 
-	return &i2c_monarch_obj;
+	//return &i2c_monarch_obj;
+	return i2c_obj;
 }
 
 /**
@@ -57,6 +62,21 @@ cyhal_i2c_t * i2c_init(cyhal_gpio_t sda, cyhal_gpio_t scl)
 cy_rslt_t i2c_write_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg, uint8_t value)
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
+
+	uint8_t data[2];
+	data[0] = reg;
+	data[1] = value;
+
+	//use i2c master write function to write to the device
+	//send the register adress followed by the data to write
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, data, 2, 0, true);
+
+	//return whether i2c write was successful
+	/**
+	if(rslt != CY_RSLT_SUCCESS) {
+		printf("I2C write failed \r\n");
+		return rslt;
+	} */
 
 	return rslt;
 }
@@ -74,6 +94,26 @@ cy_rslt_t i2c_read_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
 
+	uint8_t tx_data = reg;
+	uint8_t rx_data = 0;
+
+	//use master write function to write data to the device
+	//send register adress, do not generate stop condition
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, &tx_data, 1, 0, false);
+
+
+	if(rslt != CY_RSLT_SUCCESS) {
+		return rslt;
+	}
+	//use master read function to read data from device
+	rslt = cyhal_i2c_master_read(obj, subordinate_address, &rx_data, 1, 0, true);
+
+	if(rslt != CY_RSLT_SUCCESS) {
+		return rslt;
+	}
+
+	*value = rx_data;
+
 	return rslt;
 }
 
@@ -89,6 +129,28 @@ cy_rslt_t i2c_read_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg
 cy_rslt_t i2c_read_u16(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t reg, uint16_t *value)
 {
 	cy_rslt_t rslt = CY_RSLT_SUCCESS;
+
+	uint8_t tx_data = reg;
+	uint8_t rx_data[2];
+
+	//use cyhal master write to write data to device
+	//send register adress, do not generate stop condition
+	rslt = cyhal_i2c_master_write(obj, subordinate_address, &tx_data, 1, 0, false);
+
+	if(rslt != CY_RSLT_SUCCESS) {
+		return rslt;
+	}
+
+	//use cyhal master read to read data from the device
+	rslt = cyhal_i2c_master_read(obj, subordinate_address, rx_data, 2, 0, true);
+
+	if(rslt != CY_RSLT_SUCCESS) {
+		return rslt;
+	}
+
+	//combine the two bytes into a single uint16_t variable
+
+	*value = (uint16_t)rx_data[0]<<8 | rx_data[1];
 
 	return rslt;
 }

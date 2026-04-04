@@ -39,28 +39,38 @@ void task_system_control(void *arg);
 /*****************************************************************************/
 void task_system_control(void *arg)
 {
+
     (void)arg; // Unused parameter
-    temp_sensor_packet_t temp_packet;
+    // temp_sensor_packet_t temp_packet;
     
-    task_console_printf("Starting System Control Task\r\n");
+    // task_console_printf("Starting System Control Task\r\n");
 
-    while(1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(500));
+    // while(1)
+    // {
+    //     vTaskDelay(pdMS_TO_TICKS(500));
         
-        /* Read the temp sensor */
-        temp_packet.operation = TEMP_SENSOR_READ;
-        temp_packet.return_queue = Queue_Temp_Sensor_Responses;
+    //     /* Read the temp sensor */
+    //     temp_packet.operation = TEMP_SENSOR_READ;
+    //     temp_packet.return_queue = Queue_Temp_Sensor_Responses;
 
-        xQueueSend(Queue_Temp_Sensor_Requests, &temp_packet, portMAX_DELAY);
+    //     xQueueSend(Queue_Temp_Sensor_Requests, &temp_packet, portMAX_DELAY);
 
-        /* Wait for the response from the temp sensor task */
-        if(xQueueReceive(Queue_Temp_Sensor_Responses, &temp_packet, portMAX_DELAY) == pdTRUE)
-        {
-            if(temp_packet.operation == TEMP_SENSOR_RESPONSE)
-            {
-                task_console_printf("Temperature: %.2f C\r\n", temp_packet.value);
-            }
+    //     /* Wait for the response from the temp sensor task */
+    //     if(xQueueReceive(Queue_Temp_Sensor_Responses, &temp_packet, portMAX_DELAY) == pdTRUE)
+    //     {
+    //         if(temp_packet.operation == TEMP_SENSOR_RESPONSE)
+    //         {
+    //             task_console_printf("Temperature: %.2f C\r\n", temp_packet.value);
+    //         }
+    //     }
+    //}
+    float temperature = 0.0;
+    while(1) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        if(system_sensors_get_temp(Queue_Temp_Sensor_Responses, &temperature) == true) {
+            task_console_printf("Temperature: %.2f C\r\n", temperature);
+        } else {
+            task_console_printf("Error reading temperature");
         }
     }
 }
@@ -100,7 +110,7 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* Create a Queue for the temp sensor task */
-    Queue_Temp_Sensor_Responses = xQueueCreate(1, sizeof(temp_sensor_packet_t));
+    Queue_Temp_Sensor_Responses = xQueueCreate(1, sizeof(device_response_msg_t));
     
     /* Create the I2C Semaphore */
     I2C_Semaphore = xSemaphoreCreateBinary();
@@ -122,7 +132,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
-    if(!task_temp_sensor_resources_init(I2C_Obj, &I2C_Semaphore))
+    if(task_temp_sensor_resources_init(&I2C_Semaphore, I2C_Obj) == false)
     {
         printf("Temp Sensor Task initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);
