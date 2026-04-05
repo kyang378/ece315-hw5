@@ -11,6 +11,7 @@
 #include "eeprom.h"
 #include "cyhal_hw_types.h"
 #include <sys/types.h>
+#include "task_console.h"
 
 
 /** Determine if the EEPROM is busy writing the last
@@ -19,7 +20,8 @@
  * @param
  *
  */
-void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
+
+ void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
 {
 	uint8_t tx_buf[2];
     uint8_t rx_buf[2];
@@ -45,7 +47,9 @@ void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
         // Loop until WIP bit (bit 0) becomes 0
     } while (rx_buf[1] & 0x01);
 
-}
+} 
+
+
 
 /** Enables Writes to the EEPROM
  *

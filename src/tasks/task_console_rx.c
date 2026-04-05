@@ -14,6 +14,8 @@
 #include "drivers.h"
 #include "task_console.h"
 #include "cyhal_uart.h"
+#include "devices.h"
+#include "task_eeprom.h"
 /**
  * @brief
  * This file contains the implementation of the console receive (Rx) task.
@@ -35,6 +37,9 @@ console_buffer_t console_buffer2;
 console_buffer_t *produce_console_buffer;
 console_buffer_t *consume_console_buffer;
 
+//response queue handle
+QueueHandle_t Queue_Console_Response;
+
 //task handle
 TaskHandle_t TaskHandle_Console_Rx;
 
@@ -50,36 +55,84 @@ TaskHandle_t TaskHandle_Console_Rx;
  */
 void task_console_rx(void *param)
 {
-    (void)param; // Unused parameter
+    (void)param;
+
+    //give eeprom task time to start
+    vTaskDelay(pdMS_TO_TICKS(20));
+
     while (1)
     {
-        /* ADD CODE */
-        //wait indefinitely for a task notification
+        // Wait for ISR to notify that a full command is ready
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-        //printf("Received string: '%s'\n", consume_console_buffer->data);
+        char *cmd = consume_console_buffer->data;
 
-        //process data pointed to by console buffer pointer (will most likely require string compare)
-        //if "RED_ON", turn on red LED
-        if (strcmp(consume_console_buffer->data, "RED_ON") == 0)
+        // -----------------------------------------
+        // Handle LED commands (simple string compare)
+        // -----------------------------------------
+        if (strcmp(cmd, "RED_ON") == 0)
         {
-            //printf("RED_ON received \n");
-            //turn on red LED
             leds_set_state(LED_RED, LED_STATE_ON);
+            continue;
         }
-        else if (strcmp(consume_console_buffer->data, "RED_OFF") == 0)
+        else if (strcmp(cmd, "RED_OFF") == 0)
         {
-            //if "RED_OFF", turn off red LED
-            //printf("RED_OFF received \n");
-            //turn off red LED
             leds_set_state(LED_RED, LED_STATE_OFF);
+            continue;
         }
+
+        //use parse_cli_data to process other reqests
+        device_request_msg_t request;
+
         
+        if (parse_cli_data(cmd, &request)) {
+            //Print the command received
+            if (request.device == DEVICE_EEPROM) {
+                if (request.operation == DEVICE_OP_WRITE) {
+                    task_console_printf(
+                        "EEPROM WRITE: Addr=0x%04X, Value=0x%02X\r\n",
+                        request.address,
+                        request.value
+                    );
+                } /*else if (request.operation == DEVICE_OP_READ) {
+                    // Print placeholder value before sending request
+                    task_console_printf(
+                        "EEPROM READ: Addr=0x%04X, Value=0x00\r\n",
+                        request.address
+                    );
+                } */
+            }
 
-        //ignore everything else (clear buffer required? not specifically mentioned)
+            //Assign response queue
+            request.response_queue = Queue_Console_Response;
 
+            //Send request to EEPROM Gatekeeper
+            xQueueSend(Queue_EEPROM_Requests, &request, portMAX_DELAY);
+
+            //Wait for response
+            device_response_msg_t response;
+            xQueueReceive(Queue_Console_Response, &response, portMAX_DELAY);
+
+
+            //Print final result of read
+            if (request.operation == DEVICE_OP_READ) {
+                task_console_printf(
+                    "EEPROM READ: Addr=0x%04X, Value=0x%02X\r\n",
+                    request.address,
+                    response.payload.eeprom
+                );
+            }
+
+            continue;
+        }
+
+
+        //Unknown command
+        task_console_printf("Unknown command received \r\n");
     }
 }
+
+
 
 /**
  * @brief
@@ -104,11 +157,17 @@ bool task_console_resources_init_rx(void)
     produce_console_buffer->index = 0;
     consume_console_buffer->index = 0;
 
+    Queue_Console_Response = xQueueCreate(
+        1,
+        sizeof(device_response_msg_t)
+    );
+
+
     //create the console rx task
     rslt = xTaskCreate(
         task_console_rx,
         "Console Rx",
-        configMINIMAL_STACK_SIZE,
+        4*configMINIMAL_STACK_SIZE,
         NULL,
         tskIDLE_PRIORITY + 1,
         &TaskHandle_Console_Rx

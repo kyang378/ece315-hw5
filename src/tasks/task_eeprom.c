@@ -160,6 +160,8 @@ void task_eeprom(void *arg)
 
     while(1)
     {
+        
+
         // Wait for a request from any task
         xQueueReceive(
             Queue_EEPROM_Requests,
@@ -181,7 +183,7 @@ void task_eeprom(void *arg)
                 eeprom_cs_pin,
                 request_packet.address,
                 request_packet.value
-            );
+            ); 
 
             response_packet.status =
                 DEVICE_OPERATION_STATUS_WRITE_SUCCESS;
@@ -207,6 +209,7 @@ void task_eeprom(void *arg)
         }
 
         // Release the SPI bus
+
         xSemaphoreGive(*SPI_Semaphore);
 
         // Send response back if caller provided a queue
@@ -244,7 +247,7 @@ bool task_eeprom_resources_init(SemaphoreHandle_t *spi_semaphore, cyhal_spi_t *s
     eeprom_cs_pin = cs_pin;
 
     /*Create the EEPROM Requests Queue */
-    Queue_EEPROM_Requests = xQueueCreate(1, sizeof(device_request_msg_t ));
+    Queue_EEPROM_Requests = xQueueCreate(10, sizeof(device_request_msg_t ));
 
     /* Create the FreeRTOS task for the EEPROM */
     if (xTaskCreate(

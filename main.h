@@ -50,7 +50,7 @@
 //#define EX06         /* Example Code FreeRTOS Tasks */
 //#define EX08         /* Example Code FreeRTOS LCD Gatekeeper */
 //#define EX12
-#define EX13
+//#define EX13
 
 //#define ICE01       /* In-Class Exercise -- Memory Mapped IO - GPIO */
 //#define ICE02       /* In-Class Exercise -- LCD 8080 Driver */
@@ -67,6 +67,7 @@
 //#define HW01
 //#define HW02
 //#define HW03
+#define HW04           /* Homework 04 - FreeRTOS CLI */
 
 extern char NAME[];
 extern char APP_DESCRIPTION[];

@@ -97,7 +97,8 @@
 /***************************************************************************/
 #define PIN_SPI_MOSI    P7_0
 #define PIN_SPI_MISO    P7_1
-#define PIN_SPI_SCLK    P7_2
+#define PIN_SPI_SCLK    P7_2 //This pin is referred to by both names
+#define PIN_SPI_CLK     P7_2 //This pin is referred to by both names
 
 #define PIN_IMU_CS      P7_4
 

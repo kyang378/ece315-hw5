@@ -20,6 +20,10 @@ char APP_DESCRIPTION[] = "ECE353 S26 HW04";
 cyhal_i2c_t *I2C_Monarch_Obj;
 cyhal_spi_t *SPI_Monarch_Obj;
 
+SemaphoreHandle_t SPI_Semaphore;
+SemaphoreHandle_t I2C_Semaphore;
+
+
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -33,10 +37,16 @@ cyhal_spi_t *SPI_Monarch_Obj;
  * for each bus and give the semaphore once after creating it to ensure that 
  * it is available for use.
  */
-static void hw04_semaphores_init(void)
-{
-    /* ADD CODE */
-}   
+static void hw04_semaphores_init(void) {
+    // Create binary semaphores
+    SPI_Semaphore = xSemaphoreCreateBinary();
+    I2C_Semaphore = xSemaphoreCreateBinary();
+
+    // Ensure they start available
+    xSemaphoreGive(SPI_Semaphore);
+    xSemaphoreGive(I2C_Semaphore);
+}
+
 
 /* If you are going to create any queues outside of the tasks 
 *  create them in this function.  You will also need to allocate the queues
@@ -48,6 +58,7 @@ static void hw04_semaphores_init(void)
 static void hw04_queues_init(void)
 {
     /* ADD CODE */
+    //leaving empty
 }   
 
 /*************************************************
@@ -88,6 +99,13 @@ void app_init_hw(void)
         CY_ASSERT(0);
     }
 
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    cyhal_gpio_init(PIN_EEPROM_CS, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, true);
+
+
 }
 
 /*****************************************************************************/
@@ -116,7 +134,19 @@ void app_main(void)
     }
 
     /* Start any other tasks required to complete this homework */
-    /* ADD CODE */
+    rslt = task_eeprom_resources_init(
+        &SPI_Semaphore,
+        SPI_Monarch_Obj,
+        PIN_EEPROM_CS
+    );
+
+    if (!rslt)
+    {
+        printf("EEPROM Task initialization failed!\n\r");
+        for(int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
+    }
+
 
 
     /* Start the scheduler*/

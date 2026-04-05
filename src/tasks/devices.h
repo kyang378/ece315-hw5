@@ -63,6 +63,11 @@ typedef struct {
 //queues used
 extern QueueHandle_t Queue_Requests_Joystick;
 extern QueueHandle_t Queue_LCD;
+extern QueueHandle_t Queue_Console_Response;
+
+
+bool parse_cli_data(char * data, device_request_msg_t *request);
+
 
 #endif
 #endif /* __DEVICES_H__ */
