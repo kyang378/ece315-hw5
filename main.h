@@ -63,11 +63,12 @@
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
 //#define ICE11
 //#define ICE12
+#define ICE13
 
 //#define HW01
 //#define HW02
 //#define HW03
-#define HW04           /* Homework 04 - FreeRTOS CLI */
+//#define HW04           /* Homework 04 - FreeRTOS CLI */
 
 extern char NAME[];
 extern char APP_DESCRIPTION[];
