@@ -41,28 +41,60 @@ QueueHandle_t Queue_IO_Expander_Requests;
 
 bool system_sensors_io_expander_write(QueueHandle_t return_queue, uint8_t address, uint8_t value)
 {
-	device_request_msg_t request_packet;
+    device_request_msg_t request_packet;
 
-	/* ADD CODE */	
+    request_packet.device         = DEVICE_IO_EXP;
+    request_packet.operation      = DEVICE_OP_WRITE;
+    request_packet.address        = address;
+    request_packet.value          = value;
+    request_packet.response_queue = return_queue;   // may be NULL
 
-	return true;
+    if (xQueueSend(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
 
+    return true;
 }
+
 
 bool system_sensors_io_expander_read(QueueHandle_t return_queue, uint8_t address, uint8_t *value)
 {
-	device_request_msg_t request_packet;
-	device_response_msg_t response_packet;
+    device_request_msg_t  request_packet;
+    device_response_msg_t response_packet;
 
-	if(return_queue == NULL || value == NULL)
-	{
-		return false;
-	}
+    if (return_queue == NULL || value == NULL)
+    {
+        return false;
+    }
 
-	/* ADD CODE */
+    request_packet.device         = DEVICE_IO_EXP;
+    request_packet.operation      = DEVICE_OP_READ;
+    request_packet.address        = address;
+    request_packet.value          = 0; //*value??
+    request_packet.response_queue = return_queue;
 
-	return true;
+    if (xQueueSend(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    if (xQueueReceive(return_queue, &response_packet, portMAX_DELAY) != pdTRUE)
+    {
+        return false;
+    }
+
+    if (response_packet.status != DEVICE_OPERATION_STATUS_READ_SUCCESS)
+    {
+        return false;
+    }
+
+    *value = response_packet.payload.io_expander;
+
+    return true;
 }
+
+
 
 /**
  * @brief
@@ -70,23 +102,106 @@ bool system_sensors_io_expander_read(QueueHandle_t return_queue, uint8_t address
  * @param param
  * Unused
  */
-void task_io_expander(void *param)
+static void task_io_expander(void *param)
 {
-	device_request_msg_t request_packet;
-	device_response_msg_t response_packet;
+    device_request_msg_t  request_packet;
+    device_response_msg_t response_packet;
+    cy_rslt_t             rslt;
+    uint8_t               read_value;
 
-	uint32_t read_value = 0;
+    task_console_printf("Starting IO Expander Task\r\n");
 
-	task_console_printf("Starting IO Expander Task\r\n");
+    while (1)
+    {
+        /* Wait for a message */
+        xQueueReceive(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY);
 
-	while (1)
-	{
-		/* Wait for a message */
-		xQueueReceive(Queue_IO_Expander_Requests, &request_packet, portMAX_DELAY);
+        /* Validate request */
+        if (request_packet.device != DEVICE_IO_EXP)
+        {
+            task_console_printf("IO_EXP: Invalid device type %d\r\n", request_packet.device);
+            continue;
+        }
 
-		/* ADD CODE */	
-	}
+        if (request_packet.operation != DEVICE_OP_READ &&
+            request_packet.operation != DEVICE_OP_WRITE)
+        {
+            task_console_printf("IO_EXP: Invalid operation %d\r\n", request_packet.operation);
+            continue;
+        }
+
+        if (request_packet.address == IOXP_ADDR_INVALID)
+        {
+            task_console_printf("IO_EXP: Invalid register address 0x%02X\r\n", request_packet.address);
+            continue;
+        }
+
+        /* Perform operation */
+        xSemaphoreTake(*I2C_Semaphore, portMAX_DELAY);
+
+        if (request_packet.operation == DEVICE_OP_WRITE)
+        {
+            rslt = i2c_write_u8(I2C_Obj,
+                                TCA9534_SUBORDINATE_ADDR,
+                                (uint8_t)request_packet.address,
+                                request_packet.value);
+
+            xSemaphoreGive(*I2C_Semaphore);
+
+            if (rslt != CY_RSLT_SUCCESS)
+            {
+                task_console_printf("IO_EXP: Write failed (addr=0x%02X, reg=0x%02X)\r\n",
+                                    TCA9534_SUBORDINATE_ADDR,
+                                    (uint8_t)request_packet.address);
+            }
+
+        }
+        else if (request_packet.operation == DEVICE_OP_READ)
+        {
+            rslt = i2c_read_u8(I2C_Obj,
+                               TCA9534_SUBORDINATE_ADDR,
+                               (uint8_t)request_packet.address,
+                               &read_value);
+
+            xSemaphoreGive(*I2C_Semaphore);
+
+            response_packet.device = DEVICE_IO_EXP;
+
+            if (rslt == CY_RSLT_SUCCESS)
+            {
+                response_packet.status               = DEVICE_OPERATION_STATUS_READ_SUCCESS;
+                response_packet.payload.io_expander  = read_value;
+            }
+            else
+            {
+                response_packet.status = DEVICE_OPERATION_STATUS_READ_FAILURE;
+                task_console_printf("IO_EXP: Read failed (addr=0x%02X, reg=0x%02X)\r\n",
+                                    TCA9534_SUBORDINATE_ADDR,
+                                    (uint8_t)request_packet.address);
+            }
+
+            if (request_packet.response_queue != NULL)
+            {
+                xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
+            }
+            else
+            {
+                task_console_printf("IO_EXP: NULL response_queue for READ request\r\n");
+            }
+        } else
+		{
+			task_console_printf(
+				"IO_EXP: Unknown command -> device=%d op=%d addr=0x%02X value=0x%02X\r\n",
+				request_packet.device,
+				request_packet.operation,
+				request_packet.address,
+				request_packet.value
+			);
+		}
+
+    }
 }
+
 
 /**
  * @brief
@@ -115,7 +230,7 @@ bool task_io_expander_resources_init(SemaphoreHandle_t *i2c_semaphore, cyhal_i2c
 	if(xTaskCreate(
 		task_io_expander,
 		"Task IO Exp",
-		configMINIMAL_STACK_SIZE,
+		5*configMINIMAL_STACK_SIZE,
 		i2c_semaphore,
 		tskIDLE_PRIORITY + 1,
 		NULL) != pdPASS)

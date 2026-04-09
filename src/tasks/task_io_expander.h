@@ -13,8 +13,8 @@
 #if defined (ECE353_FREERTOS)
 #include "drivers.h"
 
-#define TCA9534_SUBORDINATE_ADDR        0x00
-#define IOXP_ADDR_INPUT_PORT            0x00
+#define TCA9534_SUBORDINATE_ADDR        0x20 //correct?
+#define IOXP_ADDR_INPUT_PORT            0x00 //Intentionally 0
 #define IOXP_ADDR_OUTPUT_PORT           0x01
 #define IOXP_ADDR_POLARITY              0x02
 #define IOXP_ADDR_CONFIG                0x03
