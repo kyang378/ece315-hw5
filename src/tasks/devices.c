@@ -159,8 +159,18 @@ bool parse_cli_data(char *data, device_request_msg_t *request) {
         return false;
     }
 
-    // FUTURE COMMANDS GO HERE
-    // if (strcmp(p, "CAP_TOUCH") == 0) { ... }
+    // CAP_TOUCH COMMAND
+    if (strcmp(p, "CAP_TOUCH") == 0) {
+        request->device         = DEVICE_CAP_TOUCH;
+        request->operation      = DEVICE_OP_READ;
+        request->address        = 0;
+        request->value          = 0;
+        request->response_queue = NULL;   // will be set by console
+
+        return true;
+    }
+
+    // OTHER COMMANDS HERE ...
 
     return false;
 }

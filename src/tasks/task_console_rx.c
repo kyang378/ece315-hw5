@@ -86,41 +86,53 @@ void task_console_rx(void *param)
 
         
         if (parse_cli_data(cmd, &request)) {
-            //Print the command received
+
+            // Assign response queue for any device
+            request.response_queue = Queue_Console_Response;
+
+            device_response_msg_t response;
+
             if (request.device == DEVICE_EEPROM) {
+                // Optional: print write info
                 if (request.operation == DEVICE_OP_WRITE) {
                     task_console_printf(
                         "EEPROM WRITE: Addr=0x%04X, Value=0x%02X\r\n",
                         request.address,
                         request.value
                     );
-                } /*else if (request.operation == DEVICE_OP_READ) {
-                    // Print placeholder value before sending request
+                }
+
+                // Send to EEPROM gatekeeper
+                xQueueSend(Queue_EEPROM_Requests, &request, portMAX_DELAY);
+
+                // Wait for response
+                xQueueReceive(Queue_Console_Response, &response, portMAX_DELAY);
+
+                // Print read result
+                if (request.operation == DEVICE_OP_READ) {
                     task_console_printf(
-                        "EEPROM READ: Addr=0x%04X, Value=0x00\r\n",
-                        request.address
+                        "EEPROM READ: Addr=0x%04X, Value=0x%02X\r\n",
+                        request.address,
+                        response.payload.eeprom
                     );
-                } */
+                }
             }
+            else if (request.device == DEVICE_CAP_TOUCH) {
+                // Send to Cap Touch gatekeeper
+                xQueueSend(Queue_Request_Cap_Touch, &request, portMAX_DELAY);
 
-            //Assign response queue
-            request.response_queue = Queue_Console_Response;
+                // Wait for response
+                xQueueReceive(Queue_Console_Response, &response, portMAX_DELAY);
 
-            //Send request to EEPROM Gatekeeper
-            xQueueSend(Queue_EEPROM_Requests, &request, portMAX_DELAY);
-
-            //Wait for response
-            device_response_msg_t response;
-            xQueueReceive(Queue_Console_Response, &response, portMAX_DELAY);
-
-
-            //Print final result of read
-            if (request.operation == DEVICE_OP_READ) {
-                task_console_printf(
-                    "EEPROM READ: Addr=0x%04X, Value=0x%02X\r\n",
-                    request.address,
-                    response.payload.eeprom
-                );
+                if (response.status == DEVICE_OPERATION_STATUS_READ_SUCCESS) {
+                    task_console_printf(
+                        "Cap Touch: Sensor 0(X)=%u, Sensor 1(Y)=%u\r\n",
+                        response.payload.cap_touch[0],
+                        response.payload.cap_touch[1]
+                    );
+                } else {
+                    task_console_printf("Failed to read Capacitive Touch data\r\n");
+                }
             }
 
             continue;

@@ -64,12 +64,12 @@
 //#define ICE11
 //#define ICE12
 //#define ICE13
-#define ICE14
+//#define ICE14
 
 //#define HW01
 //#define HW02
 //#define HW03
-//#define HW04           /* Homework 04 - FreeRTOS CLI */
+#define HW04           /* Homework 04 - FreeRTOS CLI */
 
 extern char NAME[];
 extern char APP_DESCRIPTION[];

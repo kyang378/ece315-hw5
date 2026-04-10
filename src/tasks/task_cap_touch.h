@@ -27,6 +27,10 @@
 #define TASK_CAP_TOUCH_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define TASK_CAP_TOUCH_PRIORITY      (tskIDLE_PRIORITY + 1U)
 
+
+static void task_cap_touch(void *param);
+
+
 /* Function used to initialize resources for the IMU task */
 bool task_cap_touch_resources_init(
     QueueHandle_t queue_request,
@@ -34,6 +38,9 @@ bool task_cap_touch_resources_init(
     cyhal_i2c_t *i2c_obj, 
     cyhal_gpio_t pin_cap_touch_int
 );
+
+extern cyhal_i2c_t *I2C_Obj; //MAY NEED TO REMOVE IF NOT DEFINED
+
 
 #endif
 #endif

@@ -58,7 +58,13 @@ static void hw04_semaphores_init(void) {
 static void hw04_queues_init(void)
 {
     /* ADD CODE */
-    //leaving empty
+    // Create the Cap Touch request queue
+    Queue_Request_Cap_Touch = xQueueCreate(1, sizeof(device_request_msg_t));
+    if (Queue_Request_Cap_Touch == NULL)
+    {
+        printf("Failed to create Cap Touch Request Queue\n\r");
+        CY_ASSERT(0);
+    }
 }   
 
 /*************************************************
@@ -72,7 +78,8 @@ void app_init_hw(void)
 
     console_init();
     // Set text color to black
-    printf("\x1b[30m");
+    //printf("\x1b[30m"); //commented out since console has a black background
+    printf("\x1b[37m"); //makes text white for ease of reading
     printf("\x1b[2J\x1b[;H");
     printf("**************************************************\n\r");
     printf("* %s\n\r", APP_DESCRIPTION);
@@ -146,6 +153,22 @@ void app_main(void)
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
+
+
+    rslt = task_cap_touch_resources_init(
+        Queue_Request_Cap_Touch,
+        I2C_Semaphore,
+        I2C_Monarch_Obj,
+        PIN_CAP_TOUCH_INT
+    );
+
+    if (!rslt)
+    {
+        printf("Cap Touch Task initialization failed!\n\r");
+        for(int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
+    }
+
 
 
 
