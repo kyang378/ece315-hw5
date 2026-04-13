@@ -25,18 +25,18 @@
 
 /* Public API */
 
-/** Initialize the I2C bus to the specified module site
+/** Initialize the I2C bus to the specified module site and return a pointer to the I2C object.
  *
  * @param - None
  */
-cyhal_i2c_t * i2c_init(cyhal_gpio_t sda, cyhal_gpio_t);
+cyhal_i2c_t * i2c_init(cyhal_gpio_t sda, cyhal_gpio_t scl);
 
 /**
  * @brief 
  * Writes a single byte to the specified register of an I2C subordinate device
  * @param obj 
  * @param subordinate_address 
- * @param reg 
+ * @param reg register address to write to
  * @param value 
  * @return cy_rslt_t 
  */
@@ -47,7 +47,7 @@ cy_rslt_t i2c_write_u8(cyhal_i2c_t *obj, uint8_t subordinate_address, uint8_t re
  * Reads a single byte from the specified register of an I2C subordinate device
  * @param obj 
  * @param subordinate_address 
- * @param reg 
+ * @param reg register address to read from
  * @param value 
  * @return cy_rslt_t 
  */

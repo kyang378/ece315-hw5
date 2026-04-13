@@ -13,7 +13,8 @@
 #if defined (ECE353_FREERTOS)
 #include "drivers.h"
 
-#define TCA9534_SUBORDINATE_ADDR        0x00
+// per board data sheet, the IO expander on our board has A0, A1, and A2 all tied to GND
+#define TCA9534_SUBORDINATE_ADDR        0x20
 #define IOXP_ADDR_INPUT_PORT            0x00
 #define IOXP_ADDR_OUTPUT_PORT           0x01
 #define IOXP_ADDR_POLARITY              0x02

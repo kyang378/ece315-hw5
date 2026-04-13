@@ -11,11 +11,10 @@
 #include "main.h"
 
 #if defined(ICE11)
-#include "rtos_events.h"
 #include "drivers.h"
 #include "task_buttons.h"
-#include "task_console.h"
 #include "task_ipc.h"
+#include "rtos_events.h"
 
 char APP_DESCRIPTION[] = "ECE353: ICE 11 - FreeRTOS IPC Rx/Tx";
 
@@ -26,6 +25,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 11 - FreeRTOS IPC Rx/Tx";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
+EventGroupHandle_t ECE353_RTOS_Events = NULL;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -34,6 +34,62 @@ char APP_DESCRIPTION[] = "ECE353: ICE 11 - FreeRTOS IPC Rx/Tx";
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
+
+/* This function will be used to discover other board. This function should not
+ * return until the discovery is complete.  The discovery is complete when we receive
+ * a discovery message from the other board OR we send a discovery message that is 
+ * Acked by the other board */
+void discover_board(uint16_t *sequence_num)
+{
+    bool discovery_complete = false;
+    uint16_t current_sequence;
+    EventBits_t events;
+
+    while(discovery_complete == false)
+    {
+        current_sequence = *sequence_num;
+
+        if(ECE353_RTOS_Events != NULL)
+        {
+            xEventGroupClearBits(
+                ECE353_RTOS_Events,
+                ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED | ECE353_RTOS_EVENTS_IPC_DISCOVERY_RECEIVED
+            );
+        }
+
+        // Send a discovery message
+        ipc_send_discovery(current_sequence);
+
+        events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED | ECE353_RTOS_EVENTS_IPC_DISCOVERY_RECEIVED,
+            pdTRUE,
+            pdFALSE,
+            pdMS_TO_TICKS(IPC_ACK_TIMEOUT_MS)
+        );
+
+        // the discovery is complete when either we send a discovery message that is ACKed
+        // by the other board...
+        if((events & ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED) != 0)
+        {
+            printf("Received ACK for sequence number: %u!\n\r\n\r", (unsigned int)current_sequence);
+            discovery_complete = true;
+        }
+        // ...or we receive a discovery message from the other board
+        else if((events & ECE353_RTOS_EVENTS_IPC_DISCOVERY_RECEIVED) != 0)
+        {
+            printf("Discovery message received from other board!\n\r\n\r");
+            discovery_complete = true;
+        }
+        else
+        {
+            printf("Discovery timeout for sequence number: %u. Retrying...\n\r", (unsigned int)current_sequence);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+    }
+}
+
 /**
  * @brief
  * This task will be used to verify the functionality of the IPC UART specification
@@ -46,60 +102,115 @@ void task_system_control(void *arg)
 {
     (void)arg; // Unused parameter
     EventBits_t events;
+    bool ack_received;
+    uint16_t sequence_num = 0;
+    uint16_t current_sequence = 0;
+    ipc_status_t status_code = IPC_STATUS_CRC_FAIL;
 
-    ipc_result_t result = IPC_RESULT_MISS;
-    ipc_game_control_t game_control = IPC_GAME_CONTROL_NEW_GAME;
-    ipc_error_t error = IPC_ERROR_CHECKSUM;
+    /* Begin the discovery process. */
+    discover_board(&sequence_num);
 
     while(1)
     {
-        // Wait for SW1 or SW2 to be pressed
-        events = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                    ECE353_RTOS_EVENTS_SW1 | ECE353_RTOS_EVENTS_SW2 | ECE353_RTOS_EVENTS_SW3,
-                                    pdTRUE,
-                                    pdFALSE,
-                                    portMAX_DELAY);
+        // Wait for SW1, SW2,or SW3 to be pressed.  If you have not gotten task_buttons.c working yet, 
+        // you will need to do so before you can proceed with this task. 
+        events = xEventGroupWaitBits
+        (
+            ECE353_RTOS_Events,
+            ECE353_EVENT_BUTTON_SW1_PRESSED | ECE353_EVENT_BUTTON_SW2_PRESSED | ECE353_EVENT_BUTTON_SW3_PRESSED,
+            pdTRUE,
+            pdFALSE,
+            portMAX_DELAY
+        );
 
-        if(events & ECE353_RTOS_EVENTS_SW1)
+        if(events & ECE353_EVENT_BUTTON_SW1_PRESSED)
         {
-            if(!ipc_send_result(result))
+            /* Send the active player message  */
+            current_sequence = sequence_num;
+            if(ipc_send_active_player(current_sequence) == false)
             {
-                // Handle send failure (optional)
+                printf("Failed to send active player packet.\n\r\n\r");
+                continue;
             }
-            result++;
 
-            if(result > IPC_RESULT_SUNK)
+            sequence_num++;
+
+            /* Wait for the ack */
+            ack_received = ipc_wait_for_ack(IPC_ACK_TIMEOUT_MS);
+
+            /* Print out a message indicating if the ACK was received */
+            if(ack_received)
             {
-                result = IPC_RESULT_MISS;
+                printf("ACK received for active player sequence %u.\n\r\n\r", (unsigned int)current_sequence);
+            }
+            else
+            {
+                printf("Timed out waiting for ACK on active player sequence %u.\n\r\n\r", (unsigned int)current_sequence);
             }
         }
-        else if(events & ECE353_RTOS_EVENTS_SW2)
+        else if(events & ECE353_EVENT_BUTTON_SW2_PRESSED)
         {
-            if(!ipc_send_game_control(game_control))
+            /* Send the inactive player message  */
+            current_sequence = sequence_num;
+            if(ipc_send_inactive_player(current_sequence) == false)
             {
-                // Handle send failure (optional)
+                printf("Failed to send inactive player packet.\n\r\n\r");
+                continue;
             }
-            game_control++;
 
-            if(game_control > IPC_GAME_CONTROL_END_GAME)
+            sequence_num++;
+
+            /* Wait for the ack */
+            ack_received = ipc_wait_for_ack(IPC_ACK_TIMEOUT_MS);
+
+            /* Print out a message indicating if the ACK was received */
+            if(ack_received)
             {
-                game_control = IPC_GAME_CONTROL_NEW_GAME;
-            }       
+                printf("ACK received for inactive player sequence %u.\n\r\n\r", (unsigned int)current_sequence);
+            }
+            else
+            {
+                printf("Timed out waiting for ACK on inactive player sequence %u.\n\r\n\r", (unsigned int)current_sequence);
+            }
         }
-        else if(events & ECE353_RTOS_EVENTS_SW3)
+        else if(events & ECE353_EVENT_BUTTON_SW3_PRESSED)
         {
-            if(!ipc_send_error(error))
+            /* Send the status message with an error code  */
+            current_sequence = sequence_num;
+            if(ipc_send_status(current_sequence, status_code) == false)
             {
-                // Handle send failure (optional)
+                printf("Failed to send status packet.\n\r\n\r");
+                continue;
             }
-            error++;
 
-            if(error > IPC_ERROR_SYSTEM_FAILURE)
+            sequence_num++;
+
+            /* Wait for the ack */
+            ack_received = ipc_wait_for_ack(IPC_ACK_TIMEOUT_MS);
+
+            /* Print out a message indicating if the ACK was received */
+            if(ack_received)
             {
-                error = IPC_ERROR_CHECKSUM;
-            }       
-        }
+                printf("ACK received for status sequence %u.\n\r\n\r", (unsigned int)current_sequence);
+            }
+            else
+            {
+                printf("Timed out waiting for ACK on status sequence %u.\n\r\n\r", (unsigned int)current_sequence);
+            }
 
+            if(status_code == IPC_STATUS_CRC_FAIL)
+            {
+                status_code = IPC_STATUS_INVALID_MSG_TYPE;
+            }
+            else
+            {
+                status_code = IPC_STATUS_CRC_FAIL;
+            }
+        }
+        else
+        {
+             printf("Unknown Event!\n\r\n\r");
+        }
     }
 }
 
@@ -129,15 +240,6 @@ void app_init_hw(void)
         CY_ASSERT(0);
     }
 
-    rslt = buttons_init_gpio();
-
-    if(rslt != CY_RSLT_SUCCESS)
-    {
-        printf("Button initialization failed!\n\r");
-        for(int i = 0; i < 10000; i++);
-        CY_ASSERT(0);
-    }
-
 }
 
 /*****************************************************************************/
@@ -151,17 +253,16 @@ void app_main(void)
 {
     // Initialize the EventGroup
     ECE353_RTOS_Events = xEventGroupCreate();
-
-    if(!task_buttons_init())
+    if(ECE353_RTOS_Events == NULL)
     {
-        printf("Button initialization failed!\n\r");
+        printf("Event group initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }
 
-    if(!task_console_init())
+    if(!task_button_init())
     {
-        printf("Console initialization failed!\n\r");
+        printf("Button initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }

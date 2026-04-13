@@ -46,7 +46,30 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
         return false;
     }
 
-    /* ADD CODE */
+    request.device = DEVICE_IMU;
+    request.operation = DEVICE_OP_READ;
+    request.address = IMU_REG_OUTX_L_XL;
+    request.value = 0;
+    request.response_queue = return_queue;
+
+    if(xQueueSend(Queue_IMU_Request, &request, portMAX_DELAY) != pdPASS)
+    {
+        return false;
+    }
+
+    if(xQueueReceive(return_queue, &response, portMAX_DELAY) != pdPASS)
+    {
+        return false;
+    }
+
+    if(response.device != DEVICE_IMU || response.status != DEVICE_OPERATION_STATUS_READ_SUCCESS)
+    {
+        return false;
+    }
+
+    imu_data[0] = (int16_t)response.payload.imu[0];
+    imu_data[1] = (int16_t)response.payload.imu[1];
+    imu_data[2] = (int16_t)response.payload.imu[2];
 
     return true;
 }
@@ -57,17 +80,72 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
     device_request_msg_t request;
     device_response_msg_t response;
 
-    if(!imu_init(imu_spi_obj, imu_cs_pin))
+    int16_t accel_data[3];
+
+    task_console_printf("Starting IMU Task\r\n");
+
+    // Grab the SPI semaphore before accessing the IMU
+    // because imu_init() will perform SPI transactions to configure the IMU
+    if(xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY) != pdPASS)
     {
         CY_ASSERT(0);
     }
 
-    while(1)
+    /* Initialize the IMU */
+    if(!imu_init(imu_spi_obj, imu_cs_pin))
+    {
+        task_console_printf("IMU init failed!\r\n");
+        CY_ASSERT(0);
+    }
+
+    task_console_printf("IMU init successful\r\n");
+
+    // Release the SPI semaphore after initializing the IMU
+    xSemaphoreGive(*SPI_Semaphore);
+
+    while(1) // QUESTION: do we still need a semaphore here if we have a queue?
     {
         /* Wait for a request to be available */
         xQueueReceive(Queue_IMU_Request, &request, portMAX_DELAY);
 
-        /* ADD CODE */  
+        response.device = DEVICE_IMU;
+        response.status = DEVICE_OPERATION_STATUS_READ_FAILURE;
+
+        if(request.operation == DEVICE_OP_READ)
+        {
+            vTaskDelay(pdMS_TO_TICKS(250));
+
+            if(xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY) == pdPASS)
+            {
+                /* Get the IMU data */
+                imu_read_registers(
+                    imu_spi_obj,
+                    imu_cs_pin,
+                    (uint8_t)request.address,
+                    (uint8_t *)accel_data,
+                    sizeof(accel_data)
+                );
+
+                xSemaphoreGive(*SPI_Semaphore);
+
+                response.payload.imu[0] = (uint16_t)accel_data[0];
+                response.payload.imu[1] = (uint16_t)accel_data[1];
+                response.payload.imu[2] = (uint16_t)accel_data[2];
+                response.status = DEVICE_OPERATION_STATUS_READ_SUCCESS;
+
+                task_console_printf(
+                    "Accel x: %d, Accel y: %d, Accel z: %d\r\n",
+                    accel_data[0],
+                    accel_data[1],
+                    accel_data[2]
+                );
+            }
+        }
+
+        if(request.response_queue != NULL)
+        {
+            xQueueSend(request.response_queue, &response, portMAX_DELAY);
+        }
     }
 }
 
@@ -81,7 +159,7 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
   * @return true 
   * @return false 
   */
- bool task_imu_resources_init(void *spi_semaphore, cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
+ bool task_imu_resources_init(SemaphoreHandle_t *spi_semaphore, cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
  {
     if(spi_semaphore == NULL || spi_obj == NULL || cs_pin == NC)
     {
@@ -89,7 +167,7 @@ bool system_sensors_get_imu(QueueHandle_t return_queue, int16_t imu_data[3])
     }
 
     /* Save the SPI resources */
-    SPI_Semaphore = (SemaphoreHandle_t *)spi_semaphore;
+    SPI_Semaphore = spi_semaphore;
     imu_spi_obj = spi_obj;
     imu_cs_pin = cs_pin;
 

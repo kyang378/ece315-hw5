@@ -42,7 +42,32 @@ bool system_sensors_eeprom_write(QueueHandle_t return_queue, uint16_t address, u
     device_request_msg_t request;
     device_response_msg_t response;
 
-    // ADD CODE
+    if(address > 0x7FFF) // EEPROM is only 32KB
+    {
+        return false;
+    }
+
+    // format the data packet
+    request.device = DEVICE_EEPROM;
+    request.operation = DEVICE_OP_WRITE;
+    request.address = address;
+    request.value = data;
+    request.response_queue = return_queue;
+
+    // send the packet
+    if(xQueueSend(Queue_EEPROM_Requests, &request, portMAX_DELAY) != pdPASS)
+    {
+        return false;
+    }
+
+    // optionally wait for a response if a return queue was provided
+    if(return_queue != NULL)
+    {
+        if(xQueueReceive(return_queue, &response, portMAX_DELAY) != pdPASS)
+        {
+            return false;
+        }
+    }
 
     return true;
 }   
@@ -70,7 +95,27 @@ bool system_sensors_eeprom_read(QueueHandle_t return_queue, uint16_t address, ui
         return false;
     }
 
-    // ADD CODE 
+    // format the data packet
+    request.device = DEVICE_EEPROM;
+    request.operation = DEVICE_OP_READ;
+    request.address = address;
+    request.response_queue = return_queue;
+
+    // send the packet
+    if(xQueueSend(Queue_EEPROM_Requests, &request, portMAX_DELAY) != pdPASS)
+    {
+        return false;
+    }
+
+    // wait for the response and return the data
+    if(return_queue != NULL)
+    {
+        if(xQueueReceive(return_queue, &response, portMAX_DELAY) != pdPASS)
+        {
+            return false;
+        }
+        *data = response.payload.eeprom;
+    }
 
     return true;
 }
@@ -97,7 +142,49 @@ void task_eeprom(void *arg)
             portMAX_DELAY
         );
 
-        /* ADD CODE */  
+        response_packet.device = DEVICE_EEPROM;
+
+        // examine request to see which operation was requested
+        if(request_packet.operation == DEVICE_OP_WRITE)
+        {
+            // take the SPI semaphore before accessing the EEPROM
+            response_packet.status = DEVICE_OPERATION_STATUS_WRITE_FAILURE;
+
+            if(xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY) == pdPASS)
+            {
+                eeprom_write_byte(
+                    eeprom_spi_obj,
+                    eeprom_cs_pin,
+                    request_packet.address,
+                    request_packet.value
+                );
+                xSemaphoreGive(*SPI_Semaphore);
+
+                response_packet.status = DEVICE_OPERATION_STATUS_WRITE_SUCCESS;
+            }
+        }
+        else if(request_packet.operation == DEVICE_OP_READ)
+        {
+            // Read the data from the specified address and return it in the response packet
+            response_packet.status = DEVICE_OPERATION_STATUS_READ_FAILURE;
+
+            if(xSemaphoreTake(*SPI_Semaphore, portMAX_DELAY) == pdPASS)
+            {
+                response_packet.payload.eeprom = eeprom_read_byte(
+                    eeprom_spi_obj,
+                    eeprom_cs_pin,
+                    request_packet.address
+                );
+                xSemaphoreGive(*SPI_Semaphore);
+
+                response_packet.status = DEVICE_OPERATION_STATUS_READ_SUCCESS;
+            }
+        }
+
+        if(request_packet.response_queue != NULL)
+        {
+            xQueueSend(request_packet.response_queue, &response_packet, portMAX_DELAY);
+        }
     }
 }
 

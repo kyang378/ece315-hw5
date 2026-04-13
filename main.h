@@ -50,6 +50,8 @@
 //#define EX05         /* Example Code FreeRTOS Tasks */
 //#define EX06         /* Example Code FreeRTOS Tasks */
 //#define EX08         /* Example Code FreeRTOS LCD Gatekeeper */
+//#define EX12         /* Example Code FreeRTOS SPI + IMU */
+//#define EX13        /* Example Code FreeRTOS I2C + Temp Sensor */
 
 //#define ICE01       /* In-Class Exercise -- Memory Mapped IO - GPIO */
 //#define ICE02       /* In-Class Exercise -- LCD 8080 Driver */
@@ -57,13 +59,19 @@
 //#define ICE04       /* In-Class Exercise -- PWM Buzzer */
 //#define ICE05       /* In-Class Exercise -- FreeRTOS Event Groups */
 //#define ICE06       /* In-Class Exercise -- FreeRTOS Queues */
-//define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
+//#define ICE08       /* In-Class Exercise -- FreeRTOS LCD Gatekeeper */
 //#define ICE09       /* In-Class Exercise -- FreeRTOS UART Rx IRQ + Buffering  */
 //#define ICE10       /* In-Class Exercise -- FreeRTOS UART Tx IRQ + Buffering  */
+//#define ICE11         /* In-Class Exercise -- IPC */
+//#define ICE12       /* In-Class Exercise -- FreeRTOS SPI + EEPROM */
+//#define ICE13
+//#define ICE14       
+
 
 //#define HW01
-#define HW02
+//#define HW02
 //#define HW03
+#define HW04        /* Homework 04 - FreeRTOS CLI */
 
 extern char NAME[];
 extern char APP_DESCRIPTION[];

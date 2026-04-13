@@ -24,17 +24,17 @@
  cy_rslt_t buttons_init_gpio(void) {
     // to intialize the buttons is to initialize the GPIO pins as inputs
     cy_rslt_t rslt;
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW1, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0) != CY_RSLT_SUCCESS)) { // initially deasserted (1)
+    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW1, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) { // initially deasserted (1)
         printf("Error initializing SW1\n\r");
         CY_ASSERT(0);
     }
 
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW2, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0) != CY_RSLT_SUCCESS)) {
+    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW2, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) {
         printf("Error initializing SW2\n\r");
         CY_ASSERT(0);
     }
 
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW3, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0) != CY_RSLT_SUCCESS)) {
+    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW3, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) {
         printf("Error initializing SW3\n\r");
         CY_ASSERT(0);
     }

@@ -18,7 +18,8 @@
 #include "drivers.h"
 #include "devices.h"
 
-#define LTR_SUBORDINATE_ADDR   0x00
+// 7-bit address
+#define LTR_SUBORDINATE_ADDR    0x29
 
 #define LTR_REG_CONTR           0x80
 #define LTR_REG_MEAS_RATE       0x85
@@ -29,6 +30,11 @@
 #define LTR_REG_ALS_DATA_CH0_0  0x8A
 #define LTR_REG_ALS_DATA_CH0_1  0x8B
 #define LTR_REG_ALS_STATUS      0x8C
+
+// values in those read only regs
+#define LTR_PART_ID 0x0A
+#define LTR_REVISION_ID 0x00
+#define LTR_MANUFAC_ID 0x05
 
 #define LTR_REG_CONTR_SW_RESET  (1 << 1)
 #define LTR_REG_CONTR_ALS_MODE  (1 << 0)
