@@ -21,13 +21,15 @@
 #include "cap_touch.h"
 
 #include "devices.h"
-#include "cyhal_spi.h"
+#include "cyhal_i2c.h"
 #include "task_console.h"
 
 #define TASK_CAP_TOUCH_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define TASK_CAP_TOUCH_PRIORITY      (tskIDLE_PRIORITY + 1U)
 
-/* Function used to initialize resources for the IMU task */
+extern QueueHandle_t Queue_Request_Cap_Touch; // queue for sending requests to the cap_touch task from the console Rx task
+
+/* Function used to initialize resources for the Cap Touch task */
 bool task_cap_touch_resources_init(
     QueueHandle_t queue_request,
     SemaphoreHandle_t i2c_semaphore, 

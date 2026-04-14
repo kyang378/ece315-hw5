@@ -60,5 +60,8 @@ typedef struct {
     } payload;
 } device_response_msg_t ;
 
+// parses the data received on the console and convert it into a device_request_msg_t message. This function will be called from task_console_rx() to determine which command has been received and which gatekeeper task will be sent the request.
+bool parse_cli_data(char* data, device_request_msg_t* request);
+
 #endif
 #endif /* __DEVICES_H__ */

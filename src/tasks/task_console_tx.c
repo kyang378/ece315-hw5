@@ -162,6 +162,17 @@ void task_console_printf(char *str_ptr, ...)
     char *task_name;
     uint32_t length = 0;
     va_list args;
+    BaseType_t scheduler_running;
+
+    scheduler_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
+
+    if ((xQueue_Console_Tx == NULL) || (!scheduler_running))
+    {
+        va_start(args, str_ptr);
+        vprintf(str_ptr, args);
+        va_end(args);
+        return;
+    }
 
     /* ADD CODE */
     /* Allocate the message buffer */
@@ -173,7 +184,7 @@ void task_console_printf(char *str_ptr, ...)
 
         // tells us what task is trying to send the message to the console
         task_name = pcTaskGetName(xTaskGetCurrentTaskHandle());
-        length = snprintf(message_buffer, CONSOLE_MAX_MESSAGE_LENGTH, "%-16s : ",
+        length = snprintf(message_buffer, CONSOLE_MAX_MESSAGE_LENGTH, "%-17s: ",
                               task_name);
 
         // tells us the format of the message

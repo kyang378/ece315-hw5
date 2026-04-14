@@ -11,6 +11,8 @@
 #include "task_console.h"
 
 #ifdef ECE353_FREERTOS  
+static bool Console_Ignore_Line_Feed = false;
+
 /**
  * @brief 
  * This function is the event handler for the console UART. This is the ISR for both
@@ -31,36 +33,43 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint8_t c; // the character received from the UART
 
-    // QUESTION: I don't understand this &
     if ((event & CYHAL_UART_IRQ_RX_NOT_EMPTY) == CYHAL_UART_IRQ_RX_NOT_EMPTY)
     {
         // Read in the character
         cyhal_uart_getc(&cy_retarget_io_uart_obj, &c, 0);
 
-        // Echo the character to the hardware FIFO, which will send it back to the console, so the user can see what they typed.
-        cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
-
+        // Ignore the LF in a CRLF pair so one ENTER only produces one command.
+        if (Console_Ignore_Line_Feed && c == '\n')
+        {
+            Console_Ignore_Line_Feed = false;
+        }
         // if character is equal to backspace or the delete key,
         // remove the last character from the array
-        if (c == '\b' || c == 127) // 127 is the ASCII code for delete
+        else if (c == '\b' || c == 127) // 127 is the ASCII code for delete
         {
-            // QUESTION: should this be consume or produce buffer? - consume, because we want to delete the last character that was added to the buffer, which is the one that the user just typed and then backspaced over; the produce buffer is the one that we are currently adding characters to, so if we backspace, we want to remove the last character from the produce buffer, which is the same as the consume buffer at this point because we haven't swapped them yet.
+            Console_Ignore_Line_Feed = false;
 
-            if (consume_console_buffer->index > 0) // if there is something to delete
+            if (produce_console_buffer->index > 0)
             {
-                consume_console_buffer->index--; // move the index back by one, effectively deleting the last character
-                
-                // QUESTION: not sure if we should do this
-                // safer to always append a null terminator. Even if the user later do a \n 
-                // or \r, this auto-populated \0 would be overwritten.
-                consume_console_buffer->data[consume_console_buffer->index] = '\0'; // null terminate the string at the new index
+                produce_console_buffer->index--;
+                produce_console_buffer->data[produce_console_buffer->index] = '\0';
+
+                cyhal_uart_putc(&cy_retarget_io_uart_obj, '\b');
+                cyhal_uart_putc(&cy_retarget_io_uart_obj, ' ');
+                cyhal_uart_putc(&cy_retarget_io_uart_obj, '\b');
             }
         }
         // else if the current charcter is the \n or \r 
         else if (c == '\n' || c == '\r')
         {
+            // Normalize line endings so the terminal cursor stays aligned.
+            cyhal_uart_putc(&cy_retarget_io_uart_obj, '\r');
+            cyhal_uart_putc(&cy_retarget_io_uart_obj, '\n');
+
+            Console_Ignore_Line_Feed = (c == '\r');
+
             // null terminate the string
-            consume_console_buffer->data[consume_console_buffer->index] = '\0';
+            produce_console_buffer->data[produce_console_buffer->index] = '\0';
             
             // swap the role of the produce and consume buffers beofre sending a task notification for the bottom half task to process the received string
             console_buffer_t *temp = produce_console_buffer;
@@ -75,6 +84,7 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
 
             // change the index back to 0 for the next round of receiving characters first
             produce_console_buffer->index = 0; // reset the index for the next message
+            produce_console_buffer->data[0] = '\0';
 
             // so the difference we make by doing the following two lines, is so that when
             // our bottom half test does have a higher priority than the current one, instead of waiting for the current task to finish its time slice, we can immediately switch to the bottom half task right after the ISR finishes, which allows us to process the received console command with lower latency.
@@ -82,12 +92,12 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // yield to the bottom half task
 
         }else {
-            // else, add the character to the buffer and increment the index
-            produce_console_buffer->data[produce_console_buffer->index] = c;
+            Console_Ignore_Line_Feed = false;
 
-            // ensure there is space for the null terminator (?)
             if (produce_console_buffer->index < CONSOLE_MAX_MESSAGE_LENGTH - 1) 
             {
+                cyhal_uart_putc(&cy_retarget_io_uart_obj, c);
+                produce_console_buffer->data[produce_console_buffer->index] = c;
                 produce_console_buffer->index++;
             }
         }
