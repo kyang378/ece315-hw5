@@ -10,7 +10,7 @@
  */
 #include "main.h"
 
-#if defined(ICE11)
+#if defined(ICE11) | defined(HW05)
 #include "drivers.h"
 #include "task_buttons.h"
 #include "task_ipc.h"
@@ -26,6 +26,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 11 - FreeRTOS IPC Rx/Tx";
 /* Global Variables                                                          */
 /*****************************************************************************/
 EventGroupHandle_t ECE353_RTOS_Events = NULL;
+bool is_guessing = false;
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -74,12 +75,15 @@ void discover_board(uint16_t *sequence_num)
         {
             printf("Received ACK for sequence number: %u!\n\r\n\r", (unsigned int)current_sequence);
             discovery_complete = true;
+            is_guessing = true; // if we sent the discovery message and got an ACK back, then we are the guessing board
+
         }
         // ...or we receive a discovery message from the other board
         else if((events & ECE353_RTOS_EVENTS_IPC_DISCOVERY_RECEIVED) != 0)
         {
             printf("Discovery message received from other board!\n\r\n\r");
             discovery_complete = true;
+            is_guessing = false; // if we receive a discovery message, then we are the subordinate board
         }
         else
         {

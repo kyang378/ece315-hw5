@@ -20,6 +20,12 @@
 #include "task_eeprom.h"
 #include "task_cap_touch.h"
 #include "task_console.h"
+#include "task_joystick.h"
+#include "task_buttons.h"
+#include "task_ipc.h"
+#include "task_lcd.h"
+#include "master_mind_lib.h"
+#include "ice11.c"  // for discover_board function
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
@@ -28,6 +34,8 @@
 /* Function Definitions                                                      */
 /*****************************************************************************/
 void task_hw05_system_control(void *pvParameters);
+static void hw05_semaphores_init(void);
+static void hw05_queues_init(void);
 
 
  #endif
