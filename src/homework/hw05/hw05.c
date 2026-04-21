@@ -58,13 +58,7 @@ static void hw05_semaphores_init(void) {
 static void hw05_queues_init(void)
 {
     /* ADD CODE */
-    // Create the Cap Touch request queue
-    Queue_Request_Cap_Touch = xQueueCreate(1, sizeof(device_request_msg_t));
-    if (Queue_Request_Cap_Touch == NULL)
-    {
-        printf("Failed to create Cap Touch Request Queue\n\r");
-        CY_ASSERT(0);
-    }
+    //nothing for now
 }  
 
 
@@ -135,7 +129,12 @@ void app_init_hw(void)
 */
 void task_hw05_system_control(void *pvParameters){
     //Initialization requirements
-    //1. initialize board and establish communicatoin
+    //1. initialize board and establish communication
+
+    //core loop should never exit
+    while (true) {
+
+    }
 }
 
 /*****************************************************************************/

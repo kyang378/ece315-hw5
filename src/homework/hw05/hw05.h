@@ -20,6 +20,11 @@
 #include "task_eeprom.h"
 #include "task_cap_touch.h"
 #include "task_console.h"
+#include "task_joystick.h"
+#include "task_buttons.h"
+#include "task_ipc.h"
+#include "task_lcd.h"
+#include "master_mind_lib.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
