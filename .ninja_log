@@ -871,3 +871,6 @@
 450	1734	7978632689887282	C:/ece353/ece353-s26-kyang378/build/Debug/local/src/tasks/task_console_tx.o	bd6e962805ff22b0
 91	2302	7978632686301293	C:/ece353/ece353-s26-kyang378/build/Debug/local/src/homework/hw04/hw04.o	8886fa98bd78c449
 2302	4140	7978632708406020	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	be39ab3c5992b293
+6197	15148	7978848019444461	C:/ece353/ece353-s26-kyang378/build/Debug/local/src/drivers/cap_touch.o	7d618762ef6f4ae7
+6806	15174	7978848025528448	C:/ece353/ece353-s26-kyang378/build/Debug/local/src/tasks/task_cap_touch.o	1c87ee010acf767f
+15174	23483	7978848109209181	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	be39ab3c5992b293

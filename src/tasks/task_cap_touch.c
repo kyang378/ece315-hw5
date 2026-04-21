@@ -49,11 +49,15 @@ static bool task_cap_touch_verify_device(void)
 
 static bool task_cap_touch_configure_device(void)
 {
+    // Keep the controller in its normal operating mode so touch data is
+    // available in the working-mode register map.
     if (cap_touch_write_u8(I2C_Obj, FT6X06_REG_DEV_MODE, FT6X06_DEVICE_MODE_WORKING) != CY_RSLT_SUCCESS)
     {
         return false;
     }
 
+    // HW04 polls for touch data only when the CLI command arrives, so the
+    // controller is configured for polling instead of interrupt-trigger mode.
     if (cap_touch_write_u8(I2C_Obj, FT6X06_REG_G_MODE, FT6X06_G_MODE_POLLING) != CY_RSLT_SUCCESS)
     {
         return false;
@@ -78,6 +82,8 @@ static bool task_cap_touch_startup(bool *device_detected)
             CY_ASSERT(0);
         }
 
+        // Warm resets can leave the FT6236 unavailable briefly, so startup
+        // retries both detection and configuration before declaring failure.
         if (task_cap_touch_verify_device())
         {
             if (device_detected != NULL)
@@ -101,6 +107,9 @@ static bool task_cap_touch_startup(bool *device_detected)
 
 static void task_cap_touch_map_coordinates(uint16_t raw_x, uint16_t raw_y, uint16_t *sensor0, uint16_t *sensor1)
 {
+    // The FT6236 coordinate frame is rotated relative to the LCD orientation
+    // used by the homework screenshots, so remap the raw values before
+    // returning them to the console task.
     uint16_t mapped_sensor0 = raw_y;
     uint16_t mapped_sensor1 = 0;
 
@@ -156,6 +165,8 @@ static void task_cap_touch(void *arg)
         {
             if (xSemaphoreTake(I2C_Semaphore, portMAX_DELAY) == pdPASS)
             {
+                // The gatekeeper owns all FT6236 traffic so the shared I2C bus
+                // is accessed atomically with respect to other sensor tasks.
                 num_points = cap_touch_get_num_points(I2C_Obj);
 
                 if ((num_points > 0) && (num_points <= 2) &&

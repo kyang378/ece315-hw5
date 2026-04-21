@@ -12,11 +12,15 @@
 
 cy_rslt_t cap_touch_write_u8(cyhal_i2c_t *obj, uint8_t reg, uint8_t value)
 {
+    // The FT6236 exposes a simple register interface over I2C, so single-byte
+    // writes can reuse the generic "register + data" helper.
     return i2c_write_u8(obj, FT6X06_I2C_ADDR, reg, value);
 }
 
 cy_rslt_t cap_touch_read_u8(cyhal_i2c_t *obj, uint8_t reg, uint8_t *value)
 {
+    // Reads use the standard FT6236 access pattern: write the register address,
+    // issue a repeated start, then read back one byte.
     return i2c_read_u8(obj, FT6X06_I2C_ADDR, reg, value);
 }
 
@@ -29,6 +33,7 @@ uint8_t cap_touch_get_num_points(cyhal_i2c_t *obj)
         return 0;
     }
 
+    // TD_STATUS[3:0] reports how many valid touch points are currently present.
     return (status & FT6X06_TD_STATUS_MASK);
 }
 
@@ -64,6 +69,8 @@ bool cap_touch_get_position(cyhal_i2c_t *obj, uint16_t *x, uint16_t *y)
         return false;
     }
 
+    // The first touch coordinate is split across four registers. The lower
+    // nibble of XH/YH contains bits [11:8], and XL/YL contains bits [7:0].
     *x = (((uint16_t)(xh & FT6X06_TOUCH_POS_MSB_MASK)) << 8) | xl;
     *y = (((uint16_t)(yh & FT6X06_TOUCH_POS_MSB_MASK)) << 8) | yl;
 
