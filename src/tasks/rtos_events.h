@@ -37,6 +37,10 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 //IPC - verify this is correct if not working
 #define ECE353_EVENT_IPC_ACK_RECEIVED           (1<<9)
 #define ECE353_EVENT_IPC_DISCOVERY_RECEIVED     (1 << 10)
+#define ECE353_EVENT_IPC_ACTIVE_RECEIVED      (1 << 11)
+#define ECE353_EVENT_IPC_INACTIVE_RECEIVED    (1 << 12)
+#define ECE353_EVENT_IPC_STATUS_RECEIVED      (1 << 13)
+
 
 
 

@@ -23,23 +23,23 @@ void task_lcd(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
 
-    lcd_msg_request_t lcd_request;
+    lcd_msg_t msg;
     lcd_msg_response_t response;
     bool status = false;
 
     while(1)
     {
-        xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
+        xQueueReceive(Queue_Requests, &msg, portMAX_DELAY);
 
-        switch (lcd_request.msg.command) {
+        switch (msg.command) {
             case LCD_CMD_CLEAR_SCREEN:
                 lcd_clear_screen(LCD_COLOR_BLACK);
                 break;
             case LCD_CMD_PRINT_SW1_COUNT:
-                lcd_print_message(&lcd_request.msg, 10, 50);
+                lcd_print_message(&msg, 10, 50);
                 break;
             case LCD_CMD_PRINT_SW2_COUNT:
-                lcd_print_message(&lcd_request.msg, 10, 100);
+                lcd_print_message(&msg, 10, 100);
                 break;
 
             default:

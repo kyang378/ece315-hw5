@@ -62,7 +62,7 @@ typedef struct {
 
 //queues used
 extern QueueHandle_t Queue_Requests_Joystick;
-extern QueueHandle_t Queue_LCD;
+//extern QueueHandle_t Queue_LCD;
 extern QueueHandle_t Queue_Console_Response;
 extern QueueHandle_t Queue_Request_Cap_Touch;
 

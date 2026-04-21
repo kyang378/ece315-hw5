@@ -26,6 +26,7 @@ EventGroupHandle_t ECE353_RTOS_Events = NULL; //May or may not be used
 SemaphoreHandle_t SPI_Semaphore;
 SemaphoreHandle_t I2C_Semaphore;
 
+QueueHandle_t Queue_LCD;
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -202,6 +203,14 @@ void app_main(void)
         while (1);
     }
 
+    /* Initialize LCD task resources */
+    if (!task_lcd_resources_init(Queue_LCD)) {
+        printf("LCD Task initialization failed!\n\r");
+        for (int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
+    }
+
+
     /* Create other FreeRTOS tasks */
     BaseType_t status;
 
@@ -218,6 +227,29 @@ void app_main(void)
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
+
+    //init cap_touch
+    rslt = task_cap_touch_resources_init(
+        Queue_Request_Cap_Touch,
+        I2C_Semaphore,
+        I2C_Monarch_Obj,
+        PIN_CAP_TOUCH_INT
+    );
+
+    if (!rslt)
+    {
+        printf("Cap Touch Task initialization failed!\n\r");
+        for(int i = 0; i < 100000; i++) {}
+        CY_ASSERT(0);
+    }
+
+    //init light sensor
+    if (!task_light_sensor_resources_init(&I2C_Semaphore, I2C_Monarch_Obj))
+    {
+        printf("Light Sensor Task initialization failed!\n\r");
+        CY_ASSERT(0);
+    }
+
 
 
     //Init console

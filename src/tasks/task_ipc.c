@@ -104,7 +104,7 @@ bool ipc_send_discovery(uint16_t sequence_num) {
 
     packet.checksum = calculate_checksum(&packet);
 
-    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100) != pdTRUE)) {
+    if(xQueueSend(Queue_IPC_Tx, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
         return false;
     }
     return true;

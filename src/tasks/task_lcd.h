@@ -20,7 +20,9 @@
 #define TASK_LCD_PRIORITY      (tskIDLE_PRIORITY + 1U)
 
 /* FreeRTOS Queue for LCD messages */
-extern QueueHandle_t xQueue_Request_LCD;
+//extern QueueHandle_t xQueue_Request_LCD;
+//extern QueueHandle_t Queue_LCD;
+
 
 /* LCD Return Codes */
 typedef enum
@@ -34,15 +36,6 @@ typedef struct
     lcd_msg_t       msg;           // The actual LCD message
     QueueHandle_t   return_queue;  // Optional
 } lcd_msg_request_t;
-
-//Necessary? You added this.
-//Expand this typedef for other commands related to the lcd
-typedef enum
-{
-    LCD_CLEAR_SCREEN = 0,
-    LCD_PRINT_SW1_COUNT,
-    LCD_PRINT_SW2_COUNT,
-} lcd_cmd_t;
 
 /* LCD Task Initialization */
 bool task_lcd_resources_init(QueueHandle_t queue_request);
