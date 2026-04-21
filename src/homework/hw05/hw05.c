@@ -131,6 +131,7 @@ void task_hw05_system_control(void *pvParameters){
     //Initialization requirements
     //1. initialize board and establish communication
 
+
     //core loop should never exit
     while (true) {
 
@@ -218,6 +219,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
+
     //Init console
     rslt = task_console_init();
     if (!rslt)
@@ -230,9 +232,9 @@ void app_main(void)
     //init control task
      status = xTaskCreate(task_hw05_system_control,
         "HW05_CTRL",
-        configMINIMAL_STACK_SIZE + 300,
+        TASK_SYSTEM_CONTROL_STACK_SIZE,
         NULL,
-        3,
+        TASK_SYSTEM_CONTROL_PRIORITY,
         NULL);
     if (status != pdPASS)
     {
@@ -241,7 +243,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
-    //Note cap_touch is not initialized, if needed, add it
+    //Note cap_touch and LEDs are not initialized, if needed, add them
     
     /* Start the scheduler*/
     vTaskStartScheduler();

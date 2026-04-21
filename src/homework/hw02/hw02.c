@@ -226,6 +226,7 @@ void task_hw02_system_control(void *pvParameters)
                 //Once cypher is made, wait forever
                 while(1){
                     //Do nothing
+                    //TODO RETURN
                 }
             }
 
