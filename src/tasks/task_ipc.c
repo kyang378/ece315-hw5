@@ -278,7 +278,6 @@ void ipc_event_handler(void *handler_arg, cyhal_uart_event_t event)
     else
     {
     }
-    //potentially not necessary
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 

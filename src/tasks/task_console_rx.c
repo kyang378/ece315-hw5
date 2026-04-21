@@ -126,7 +126,7 @@ void task_console_rx(void *param)
 
                 if (response.status == DEVICE_OPERATION_STATUS_READ_SUCCESS) {
                     task_console_printf(
-                        "Cap Touch: Sensor 0(X)=%u, Sensor 1(Y)=%u\r\n",
+                        "Cap Touch: Sensor0(X)=%u, Sensor1(Y)=%u\r\n",
                         response.payload.cap_touch[0],
                         response.payload.cap_touch[1]
                     );

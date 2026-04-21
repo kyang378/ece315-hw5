@@ -194,7 +194,7 @@ bool task_cap_touch_resources_init(
         return false;
     }
 
-    task_console_printf("Cap Touch Task   : Starting Cap Touch Task\r\n");
+    //task_console_printf("Cap Touch Task   : Starting Cap Touch Task\r\n");
 
     return true;
 }

@@ -1045,3 +1045,12 @@
 1017	1669	7975404253826022	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	7d2f10a4caff42eb
 103	1026	7975405188961340	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw04/hw04.o	6f38de383107978
 1027	1717	7975405198116701	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	7d2f10a4caff42eb
+4246	4800	7978410065575369	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/tasks/task_console_rx.o	d4ab07ecff35a916
+4139	4812	7978410065098833	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/drivers/cap_touch.o	c24ac400b9fb6fe4
+4233	9735	7978410065414040	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/tasks/task_cap_touch.o	3dd8dedde99884a0
+4212	14378	7978410065257282	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw04/hw04.o	6f38de383107978
+14379	19393	7978410166952377	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	7d2f10a4caff42eb
+5318	6175	7978852542386515	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/tasks/task_console_rx.o	d4ab07ecff35a916
+6176	13586	7978852551065402	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	7d2f10a4caff42eb
+95	908	7978854952319527	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/tasks/task_cap_touch.o	3dd8dedde99884a0
+909	1569	7978854960606907	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	7d2f10a4caff42eb
