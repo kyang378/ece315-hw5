@@ -23,6 +23,9 @@ cyhal_i2c_t *I2C_Monarch_Obj;
 cyhal_spi_t *SPI_Monarch_Obj;
 EventGroupHandle_t ECE353_RTOS_Events = NULL; //May or may not be used
 
+SemaphoreHandle_t SPI_Semaphore;
+SemaphoreHandle_t I2C_Semaphore;
+
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
