@@ -59,7 +59,12 @@ static void hw05_semaphores_init(void) {
 static void hw05_queues_init(void)
 {
     /* ADD CODE */
-    //nothing for now
+    Queue_Request_Cap_Touch = xQueueCreate(1, sizeof(device_request_msg_t));
+    if (Queue_Request_Cap_Touch == NULL)
+    {
+        printf("Failed to create Cap Touch Request Queue\n\r");
+        CY_ASSERT(0);
+    }
 }  
 
 

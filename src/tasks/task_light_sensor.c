@@ -153,7 +153,7 @@ static void ltr_light_sensor_get_readings(uint16_t *ch1, uint16_t *ch0)
     uint8_t status = 0;
 
     status = ltr_light_sensor_status();
-    // while((status & LTR_REG_STATUS_NEW_DATA) != LTR_REG_STATUS_NEW_DATA)
+    // while((status & LTR_REG_STATUS_NEW_DATA) != LTR_REG_STATUS_NEW_DATA) //this loop never exits, but is not necessary
     // {
     //     // Wait
     //     status = ltr_light_sensor_status();

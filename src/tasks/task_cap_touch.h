@@ -39,8 +39,8 @@ bool task_cap_touch_resources_init(
     cyhal_gpio_t pin_cap_touch_int
 );
 
-extern cyhal_i2c_t *I2C_Obj; //MAY NEED TO REMOVE IF NOT DEFINED
-
+extern cyhal_i2c_t *I2C_Obj;
+extern QueueHandle_t Queue_Request_Cap_Touch;
 
 #endif
 #endif

@@ -16,7 +16,7 @@
 #include <complex.h>
 
 #ifdef ECE353_FREERTOS
-extern QueueHandle_t Queue_Joystick;
+extern QueueHandle_t Queue_Requests_Joystick;
 
 void task_joystick(void *arg);
 

@@ -16,7 +16,7 @@
  #include "task_joystick.h"
  #include "rtos_events.h"
 
- QueueHandle_t Queue_Joystick = NULL;
+ QueueHandle_t Queue_Requests_Joystick = NULL;
 
 /* Message lookup table for joystick positions */
 const char * const joystick_pos_names[] = {

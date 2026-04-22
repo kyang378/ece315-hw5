@@ -121,7 +121,7 @@ bool parse_cli_data(char *data, device_request_msg_t *request) {
             request->operation = DEVICE_OP_READ;
             request->address   = (uint16_t)addr32;
             request->value     = 0;
-            request->response_queue = NULL; //MAY NEED TO REMOVE (Two instances)
+            request->response_queue = NULL; 
 
             return true;
         }
@@ -151,7 +151,7 @@ bool parse_cli_data(char *data, device_request_msg_t *request) {
             request->operation = DEVICE_OP_WRITE;
             request->address   = (uint16_t)addr32;
             request->value     = (uint8_t)val32;
-            request->response_queue = NULL; //MAY NEED TO REMOVE (Two instances)
+            request->response_queue = NULL;
 
             return true;
         }

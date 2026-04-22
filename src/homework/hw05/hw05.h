@@ -25,6 +25,7 @@
 #include "task_ipc.h"
 #include "task_lcd.h"
 #include "master_mind_lib.h"
+#include "task_light_sensor.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
