@@ -1,0 +1,28 @@
+I figured this would be a good place to leave comments on what's been handled.
+Right now - subsystem initialization is done and will compile, in progress of getting 
+initialization requirements met - eg. handshake, determine player numbers, get cyphers 
+
+
+What is done/needs doing right now (updated Wednesday 3:00 PM)
+- all relevant subsystems should be initialized and will compile
+- Board discovery and player designations are
+written but not tested, we will need to test this together
+- Players still need to select their cyphers
+
+
+What we missed on Tuesday - 
+- Cyphers must be selected with the touchscreen, not the joysticks. 
+- The light sensor has to be polled to check whether the system should be in 
+"Light mode" or "dark mode", im pretty sure this is just setting the background color of
+the LCD
+
+Other notes
+- Looking at ICE11, we will not be able to use the file directly because
+    a. We would have overlapping app_init() and app_main() functions
+    b. The defined methods are close, but not exactly what we need, so 
+    they will be a good reference, but we will have to write our own custom
+    functions in the hw05 file.
+- task_joystick may not be used, but it is initialized just in case. I have
+not initialized LEDs since I don't think we need them, keep that in mind if we 
+read somewhere that we do need to use them.
+

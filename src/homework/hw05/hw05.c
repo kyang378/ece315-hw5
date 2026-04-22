@@ -67,6 +67,63 @@ static void hw05_queues_init(void)
     }
 }  
 
+/**
+ * @brief Sends discovery requests until either a request or an ACK
+ * is received,. when complete, the player who sucessfully sent a 
+ * discovery (received an ACK) will be designated as player 1, and 
+ * the player who received the discovery (sent an ACK) will be 
+ * player 2
+ * 
+ * @param sequence_num used to track the number of attempts at connecting
+ * @param player1 will be set to true if this board is player 1, false if player 2
+ * @return true if discovery was sucessful
+ * @return false if discovery fails
+ */
+static bool discover_board(uint16_t *sequence_num, bool *player1)
+{
+    bool discovery_complete = false;
+
+    while (!discovery_complete)
+    {
+        // Send a discovery packet
+        ipc_send_discovery(*sequence_num);
+
+        // Wait for ACK or DISCOVERY from the other board
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_IPC_ACK_RECEIVED | ECE353_EVENT_IPC_DISCOVERY_RECEIVED,
+            pdTRUE,     // clear bits
+            pdFALSE,    // wait for ANY
+            pdMS_TO_TICKS(500)
+        );
+
+        if (events & ECE353_EVENT_IPC_ACK_RECEIVED)
+        {
+            // this board initiated discovery and got ACKed - this board is Player 1
+            *player1 = true;
+            discovery_complete = true;
+        }
+        else if (events & ECE353_EVENT_IPC_DISCOVERY_RECEIVED)
+        {
+            // Other board initiated discovery - this board is Player 2
+            *player1 = false;
+
+            // Send ACK back
+            ipc_send_ack(*sequence_num);
+
+            discovery_complete = true;
+        }
+        else
+        {
+            // No response - retry with next sequence number
+            (*sequence_num)++;
+        }
+    }
+
+    return true;
+}
+
+
 
 /*************************************************
  * @brief
@@ -133,16 +190,33 @@ void app_init_hw(void)
 /**
 * primary control task for hw05
 */
-void task_hw05_system_control(void *pvParameters){
-    //Initialization requirements
-    //1. initialize board and establish communication
+void task_hw05_system_control(void *pvParameters)
+{
+    uint16_t sequence_num = 0;
+    bool player1 = false;
 
+    // 1. Establish communication and assign roles
+    discover_board(&sequence_num, &player1);
 
-    //core loop should never exit
-    while (true) {
+    if (player1)
+    {
+        task_console_printf("I am Player 1\n\r");
+    }
+    else
+    {
+        task_console_printf("I am Player 2\n\r");
+    }
 
+    // 2. Continue with the rest of the initialization requirements...
+    // TODO (cipher entry, LCD setup, etc.)
+
+    //enter core loop
+    while (true)
+    {
+        // Game loop will go here later
     }
 }
+
 
 /*****************************************************************************/
 /* Application Code                                                          */
