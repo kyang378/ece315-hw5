@@ -1,13 +1,12 @@
 I figured this would be a good place to leave comments on what's been handled.
-Right now - subsystem initialization is done and will compile, in progress of getting 
-initialization requirements met - eg. handshake, determine player numbers, get cyphers 
 
 
-What is done/needs doing right now (updated Wednesday 3:00 PM)
+What is done/needs doing right now (updated Wednesday 4:00 PM)
 - all relevant subsystems should be initialized and will compile
 - Board discovery and player designations are
 written but not tested, we will need to test this together
-- Players still need to select their cyphers
+- Players should be able to select their cyphers (with touchscreen), also not tested
+- everything remaining should be in the core loop
 
 
 What we missed on Tuesday - 
@@ -21,8 +20,11 @@ Other notes
     a. We would have overlapping app_init() and app_main() functions
     b. The defined methods are close, but not exactly what we need, so 
     they will be a good reference, but we will have to write our own custom
-    functions in the hw05 file.
+    functions in the hw05 file
+I have already implemented several (hopefully most) of these functions.
 - task_joystick may not be used, but it is initialized just in case. I have
 not initialized LEDs since I don't think we need them, keep that in mind if we 
-read somewhere that we do need to use them.
+later discover that we do need to use them.
+- If you get the chance, take a look at the helper methods I made, as you will likely use them 
+in the core loop. I left the core loop at the bottom of the file, with helpers on top.
 

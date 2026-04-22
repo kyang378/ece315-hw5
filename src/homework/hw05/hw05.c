@@ -123,6 +123,327 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
     return true;
 }
 
+/**
+ * @brief This helper function will take an x and y coordinate 
+ * and convert it to the relevant tile selected. Note that 
+ * this method will return -1 (no tile selected) when selecting
+ * the cypher row (which is not directly interactable with 
+ * touchscreen) or when there is no board date. This method
+ * does not read the cap_touch sensor, but does expect data from it.
+ * 
+ * @param x the x coordinate on the screen
+ * @param y the y coordinate on the screen
+ * @return int the number associated with the selected tile.
+ */
+int coords_to_tile(uint16_t x, uint16_t y)
+{
+    lcd_rect_t r;
+
+    // Check row NUM_0_3 (tiles 0–3)
+    for (int col = 0; col < 4; col++)
+    {
+        lcd_tile_rect(&r, LCD_TILE_ROW_NUM_0_3, col);
+
+        int left   = r.cx - r.w/2;
+        int right  = r.cx + r.w/2;
+        int top    = r.cy - r.h/2;
+        int bottom = r.cy + r.h/2;
+
+        if (x >= left && x <= right && y >= top && y <= bottom)
+        {
+            return col;   // tile 0–3
+        }
+    }
+
+    // Check row NUM_4_7 (tiles 4–7)
+    for (int col = 0; col < 4; col++)
+    {
+        lcd_tile_rect(&r, LCD_TILE_ROW_NUM_4_7, col);
+
+        int left   = r.cx - r.w/2;
+        int right  = r.cx + r.w/2;
+        int top    = r.cy - r.h/2;
+        int bottom = r.cy + r.h/2;
+
+        if (x >= left && x <= right && y >= top && y <= bottom)
+        {
+            return col + 4;   // tile 4–7
+        }
+    }
+
+    return -1; // No tile touched
+}
+
+
+/**
+ * @brief helper function to move current selection tile
+ * Assumes the switch is always legal (and correct) 
+ * and that inputs are available tiles.
+ * 
+ * @param currTile The current selected tile that will be deselected
+ * @param nextTile The next tile to be selected
+ */
+void switchSelectTiles(int currTile, int nextTile) {
+    //message used to draw the tiles
+    lcd_msg_t msg;
+    //find row and col for each tile
+    //current tile (being deselected)
+    lcd_row_t old_row = LCD_TILE_ROW_NUM_0_3; 
+    if (currTile > 3) {
+        old_row = LCD_TILE_ROW_NUM_4_7;
+    }
+    int old_col = currTile % 4;
+
+    //next tile (being selected)
+    lcd_row_t new_row = LCD_TILE_ROW_NUM_0_3; 
+    if (nextTile > 3) {
+        new_row = LCD_TILE_ROW_NUM_4_7;
+    }
+    int new_col = nextTile % 4;
+
+    //draw changed tiles
+    //current tile (deselecting)
+    if(currTile >= 0) { //do nothing if no tile currently selected
+        msg.command = LCD_CMD_DRAW_TILE;
+        msg.payload.tile.row = old_row;
+        msg.payload.tile.col = old_col;
+        msg.payload.tile.number = currTile;
+        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        master_mind_handle_msg(&msg);
+    }
+
+    //next tile (selecting)
+    if(nextTile >= 0) { //if next tile is off screen, do nothing
+        msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+        msg.payload.tile.row = new_row;
+        msg.payload.tile.col = new_col;
+        msg.payload.tile.number = nextTile;
+        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        master_mind_handle_msg(&msg);
+    }
+    
+}
+
+/**
+ * @brief Helper function to add the selected tile
+ * to the cypher display.
+ * 
+ * @param currSelectTile The tile with the number to be added
+ * @param currCypherTile The current position in the cypher
+ */
+void addToCypher(int currSelectTile, int currCypherTile) {
+    //redraw the current cypher tile with the new number
+    //and without the inverted color
+    lcd_msg_t msg;
+    msg.command = LCD_CMD_DRAW_TILE;
+    msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+    msg.payload.tile.col = currCypherTile;          //by our convention, our cypher tile number is its column
+    msg.payload.tile.number = currSelectTile;       //the selected number
+    msg.payload.tile.color_fg = LCD_COLOR_RED;
+    msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    master_mind_handle_msg(&msg);
+
+    //select the next cypher tile only if we are not at the end
+    if(currCypherTile != 4) {
+        msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+        msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+        msg.payload.tile.col = currCypherTile + 1; //next cypher tile
+        msg.payload.tile.number = 0;               //default
+        msg.payload.tile.color_fg = LCD_COLOR_RED;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    
+        master_mind_handle_msg(&msg);
+    }
+    
+}
+
+
+/**
+ * @brief Lets the user select their cypher using the touchscreen
+ * Stores their cypher for future use
+ * 
+ * @param cypher_out an array used to store the selected cypher
+ */
+void select_cypher(uint8_t cypher_out[4])
+{
+    lcd_msg_t msg;
+
+    /************************************************************
+     * 1. Draw UI: message + cypher tiles + number tiles
+     ************************************************************/
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(msg.payload.message, 32, "Select Your Cypher!");
+    master_mind_handle_msg(&msg);
+
+    // Draw 4 cypher tiles (first one inverted to show entry position)
+    for (int col = 0; col < 4; col++)
+    {
+        msg.command = (col == 0) ? LCD_CMD_DRAW_TILE_INVERTED
+                                 : LCD_CMD_DRAW_TILE;
+
+        msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+        msg.payload.tile.col = col;
+        msg.payload.tile.number = 0;
+        msg.payload.tile.color_fg = LCD_COLOR_RED;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+
+        master_mind_handle_msg(&msg);
+    }
+
+    // Draw number tiles 0–3
+    for (int col = 0; col < 4; col++)
+    {
+        msg.command = LCD_CMD_DRAW_TILE;
+
+        msg.payload.tile.row = LCD_TILE_ROW_NUM_0_3;
+        msg.payload.tile.col = col;
+        msg.payload.tile.number = col;
+        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+
+        master_mind_handle_msg(&msg);
+    }
+
+    // Draw number tiles 4–7
+    for (int col = 0; col < 4; col++)
+    {
+        msg.command = LCD_CMD_DRAW_TILE;
+
+        msg.payload.tile.row = LCD_TILE_ROW_NUM_4_7;
+        msg.payload.tile.col = col;
+        msg.payload.tile.number = col + 4;
+        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+
+        master_mind_handle_msg(&msg);
+    }
+
+    /************************************************************
+     * 2. cypher entry loop
+     ************************************************************/
+    int currcypherTile = 0;   // 0–3
+    int currSelectTile = -1;  // No tile selected yet
+    int touched_tile = -1;
+
+    while (currcypherTile < 4)
+    {
+        /********************************************************
+         * A. Check for cap‑touch input
+         ********************************************************/
+        uint16_t x, y;
+        bool touched = system_sensors_get_cap_touch(NULL, &x, &y);
+
+        if (touched)
+        {
+            touched_tile = coords_to_tile(x, y);
+
+            if (touched_tile >= 0 && touched_tile <= 7)
+            {
+                // If this is the first selection or nothing is currently selected,
+                // no need to deselect anything
+                if (currSelectTile == -1)
+                {
+                    // Highlight the touched tile
+                    switchSelectTiles(0, touched_tile); // 0 is ignored for deselect
+                    currSelectTile = touched_tile;
+                }
+                else if (touched_tile != currSelectTile)
+                {
+                    // Switch highlight from old tile to new tile
+                    switchSelectTiles(currSelectTile, touched_tile);
+                    currSelectTile = touched_tile;
+                }
+            }
+        }
+
+        /********************************************************
+         * B. Check for SW1 press to confirm selection
+         ********************************************************/
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_SW1_PRESSED,
+            pdTRUE,     // clear bit
+            pdFALSE,    // wait for ANY
+            pdMS_TO_TICKS(20)
+        );
+
+        //if SW1 is pressed, save this digit and move to next, or exit if done
+        if (events & ECE353_EVENT_SW1_PRESSED)
+        {
+            if (currSelectTile >= 0)
+            {
+                // Store selected number
+                cypher_out[currcypherTile] = currSelectTile;
+
+                // Update LCD
+                addToCypher(currSelectTile, currcypherTile);
+
+                currcypherTile++;
+
+                // Highlight next cypher tile (if any)
+                if (currcypherTile < 4)
+                {
+                    msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+                    msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                    msg.payload.tile.col = currcypherTile;
+                    msg.payload.tile.number = 0;
+                    msg.payload.tile.color_fg = LCD_COLOR_RED;
+                    msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+
+                    master_mind_handle_msg(&msg);
+                }
+            }
+        }
+    }
+
+    /************************************************************
+     * 3. cypher entry complete
+     ************************************************************/
+    task_console_printf("cypher entry complete: %d %d %d %d\n\r",
+                        cypher_out[0], cypher_out[1],
+                        cypher_out[2], cypher_out[3]);
+}
+
+/**
+ * @brief Sends the status that this player's board is ready 
+ * to move to the next state
+ * 
+ * @param sequence_num used to track the number of tries before an ack is received
+ */
+static void send_ready_status(uint16_t *sequence_num)
+{
+    // Send STATUS with OK code
+    ipc_send_status(*sequence_num, IPC_STATUS_OK);
+
+    // Wait for ACK
+    ipc_wait_for_ack(*sequence_num);
+
+    task_console_printf("Ready status ACKed (seq=%u)\n\r", *sequence_num);
+
+    (*sequence_num)++;
+}
+
+/**
+ * @brief waits for the other player to send a ready status
+ */
+static void wait_for_other_player_ready(void)
+{
+    task_console_printf("Waiting for other player...\n\r");
+
+    // Wait for STATUS_RECEIVED event
+    xEventGroupWaitBits(
+        ECE353_RTOS_Events,
+        ECE353_EVENT_IPC_STATUS_RECEIVED,
+        pdTRUE,     // clear on exit
+        pdFALSE,    // wait for ANY
+        portMAX_DELAY
+    );
+
+    task_console_printf("Other player is ready!\n\r");
+}
+
 
 
 /*************************************************
@@ -195,7 +516,7 @@ void task_hw05_system_control(void *pvParameters)
     uint16_t sequence_num = 0;
     bool player1 = false;
 
-    // 1. Establish communication and assign roles
+    //Establish communication and assign roles
     discover_board(&sequence_num, &player1);
 
     if (player1)
@@ -207,8 +528,24 @@ void task_hw05_system_control(void *pvParameters)
         task_console_printf("I am Player 2\n\r");
     }
 
-    // 2. Continue with the rest of the initialization requirements...
-    // TODO (cipher entry, LCD setup, etc.)
+    // 2. Cypher selection
+    //Allocate storage for this player's cypher
+    uint8_t my_cypher[4] = {0};
+
+    //Let the user select their cypher
+    select_cypher(my_cypher);
+
+    // Debug print
+    //task_console_printf("My cypher: %d %d %d %d\n\r", my_cypher[0], my_cypher[1], my_cypher[2], my_cypher[3]);
+
+    //3. Wait for both players to be ready and begin game
+    //Notify the other board that we are ready
+    send_ready_status(&sequence_num);
+
+    //Wait for the other board's ready message
+    wait_for_other_player_ready();
+
+    task_console_printf("Both players ready — starting game!\n\r");
 
     //enter core loop
     while (true)
