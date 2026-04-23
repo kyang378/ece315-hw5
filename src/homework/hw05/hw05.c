@@ -100,6 +100,7 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
         if (events & ECE353_EVENT_IPC_ACK_RECEIVED)
         {
             // this board initiated discovery and got ACKed - this board is Player 1
+            task_console_printf("Discovery successfully sent\n\r");
             *player1 = true;
             discovery_complete = true;
         }
@@ -107,7 +108,7 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
         {
             // Other board initiated discovery - this board is Player 2
             *player1 = false;
-
+            task_console_printf("Discovery Received\n\r");
             // Send ACK back
             ipc_send_ack(*sequence_num);
 
@@ -116,6 +117,9 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
         else
         {
             // No response - retry with next sequence number
+            if (*sequence_num%4 == 0) { //print every ~2s if board not found
+                task_console_printf("Opponent board not found, trying again.\n\r");
+            }
             (*sequence_num)++;
         }
     }
@@ -550,7 +554,7 @@ void task_hw05_system_control(void *pvParameters)
     //enter core loop
     while (true)
     {
-        // Game loop will go here later
+        // Game loop will go here
     }
 }
 
