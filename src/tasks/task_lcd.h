@@ -22,6 +22,7 @@
 /* FreeRTOS Queue for LCD messages */
 //extern QueueHandle_t xQueue_Request_LCD;
 //extern QueueHandle_t Queue_LCD;
+extern bool darkMode;
 
 
 /* LCD Return Codes */

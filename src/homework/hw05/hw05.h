@@ -36,6 +36,13 @@
 void task_hw05_system_control(void *pvParameters);
 static void hw05_semaphores_init(void);
 static void hw05_queues_init(void);
+static bool discover_board(uint16_t *sequence_num, bool *player1);
+int coords_to_tile(uint16_t x, uint16_t y);
+void switchSelectTiles(int currTile, int nextTile);
+void addToCypher(int currSelectTile, int currCypherTile);
+void select_cypher(uint8_t cypher_out[4]);
+static void send_ready_status(uint16_t *sequence_num);
+static void wait_for_other_player_ready(void);
 
 
  #endif

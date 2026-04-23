@@ -33,7 +33,14 @@ void task_lcd(void *pvParameters)
 
         switch (msg.command) {
             case LCD_CMD_CLEAR_SCREEN:
-                lcd_clear_screen(LCD_COLOR_BLACK);
+                if (darkMode) {
+                    lcd_clear_screen(LCD_COLOR_BLACK);
+                } else {
+                    lcd_clear_screen(LCD_COLOR_WHITE);
+                }
+                break;
+            case LCD_CMD_CLEAR_SCREEN_WHITE:
+                lcd_clear_screen(LCD_COLOR_WHITE);
                 break;
             case LCD_CMD_PRINT_SW1_COUNT:
                 lcd_print_message(&msg, 10, 50);
