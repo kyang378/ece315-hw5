@@ -43,6 +43,7 @@ void addToCypher(int currSelectTile, int currCypherTile);
 void select_cypher(uint8_t cypher_out[4]);
 static void send_ready_status(uint16_t *sequence_num);
 static void wait_for_other_player_ready(uint8_t *high_score);
+static bool update_dark_mode(void);
 
 
  #endif

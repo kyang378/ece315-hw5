@@ -108,14 +108,26 @@ static void hw05_queues_init(void)
  */
 static void hw05_clear_status_area(void)
 {
-    lcd_draw_rectangle(
-        LCD_W / 2,
-        (LCD_TEXT_H + (2 * LCD_MARGIN)) / 2,
-        LCD_W,
-        LCD_TEXT_H + (2 * LCD_MARGIN),
-        LCD_COLOR_BLACK,
-        true
-    );
+    if(darkMode) {
+        lcd_draw_rectangle(
+            LCD_W / 2,
+            (LCD_TEXT_H + (2 * LCD_MARGIN)) / 2,
+            LCD_W,
+            LCD_TEXT_H + (2 * LCD_MARGIN),
+            LCD_COLOR_BLACK,
+            true
+        );
+    }else {
+        lcd_draw_rectangle(
+            LCD_W / 2,
+            (LCD_TEXT_H + (2 * LCD_MARGIN)) / 2,
+            LCD_W,
+            LCD_TEXT_H + (2 * LCD_MARGIN),
+            LCD_COLOR_WHITE,
+            true
+        );
+    }
+    
 }
 
 /**
@@ -136,7 +148,7 @@ static void hw05_draw_status_header(
     }
 
     msg.command = LCD_CMD_PRINT_MESSAGE;
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "High: %02u", high_score);
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "Best: %02u", high_score);
     lcd_print_message(&msg, 0, 0);
 
     msg.command = LCD_CMD_PRINT_MESSAGE;
@@ -231,12 +243,20 @@ static void hw05_draw_cypher_entry_screen(uint8_t high_score)
     static const uint8_t cypher_defaults[4] = {0, 0, 0, 0};
     static const uint8_t keypad_top[4] = {0, 1, 2, 3};
     static const uint8_t keypad_bottom[4] = {4, 5, 6, 7};
-
-    lcd_clear_screen(LCD_COLOR_BLACK);
-    hw05_draw_status_header(high_score, 0, 0);
-    hw05_draw_tile_row(LCD_TILE_ROW_CYPHER, cypher_defaults, LCD_COLOR_RED, LCD_COLOR_BLACK, 0);
-    hw05_draw_tile_row(LCD_TILE_ROW_NUM_0_3, keypad_top, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
-    hw05_draw_tile_row(LCD_TILE_ROW_NUM_4_7, keypad_bottom, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
+    if(darkMode) {
+        lcd_clear_screen(LCD_COLOR_BLACK);
+        hw05_draw_status_header(high_score, 0, 0);
+        hw05_draw_tile_row(LCD_TILE_ROW_CYPHER, cypher_defaults, LCD_COLOR_RED, LCD_COLOR_BLACK, 0);
+        hw05_draw_tile_row(LCD_TILE_ROW_NUM_0_3, keypad_top, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
+        hw05_draw_tile_row(LCD_TILE_ROW_NUM_4_7, keypad_bottom, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
+    } else {
+        lcd_clear_screen(LCD_COLOR_WHITE);
+        hw05_draw_status_header(high_score, 0, 0);
+        hw05_draw_tile_row(LCD_TILE_ROW_CYPHER, cypher_defaults, LCD_COLOR_RED, LCD_COLOR_WHITE, 0);
+        hw05_draw_tile_row(LCD_TILE_ROW_NUM_0_3, keypad_top, LCD_COLOR_GREEN, LCD_COLOR_WHITE, -1);
+        hw05_draw_tile_row(LCD_TILE_ROW_NUM_4_7, keypad_bottom, LCD_COLOR_GREEN, LCD_COLOR_WHITE, -1);
+    }
+    
 }
 
 /**
@@ -427,7 +447,12 @@ void addToCypher(int currSelectTile, int currCypherTile) {
     msg.payload.tile.col = currCypherTile;          //by our convention, our cypher tile number is its column
     msg.payload.tile.number = currSelectTile;       //the selected number
     msg.payload.tile.color_fg = LCD_COLOR_RED;
-    msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    if(darkMode) {
+        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+    } else {
+        msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+    }
+    
     master_mind_handle_msg(&msg);
 
     //select the next cypher tile only if we are not at the end
@@ -437,7 +462,11 @@ void addToCypher(int currSelectTile, int currCypherTile) {
         msg.payload.tile.col = currCypherTile + 1; //next cypher tile
         msg.payload.tile.number = 0;               //default
         msg.payload.tile.color_fg = LCD_COLOR_RED;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if(darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
     
         master_mind_handle_msg(&msg);
     }
@@ -471,6 +500,25 @@ void select_cypher(uint8_t cypher_out[4])
 
     while (currcypherTile < 4)
     {
+        //check whether we need to change dark/light mode
+        //if so, complete redraw is required
+        if (update_dark_mode())
+        {
+            // Mode changed → redraw the entire cypher entry UI
+            hw05_draw_cypher_entry_screen(high_score);
+
+            // Redraw cypher progress so far
+            for (int i = 0; i < currcypherTile; i++)
+            {
+                addToCypher(cypher_out[i], i);
+            }
+
+            // Redraw current highlight if applicable
+            if (currSelectTile >= 0)
+            {
+                switchSelectTiles(-1, currSelectTile);
+            }
+        }
         /********************************************************
          * A. Check for cap‑touch input
          ********************************************************/
@@ -629,16 +677,18 @@ static void wait_for_other_player_ready(uint8_t *high_score)
     task_console_printf("Other player is ready!\n\r");
 }
 
-static void update_dark_mode(void)
+static bool update_dark_mode(void)
 {
     uint16_t ambient = 0;
 
     if (!system_sensors_get_light(Queue_Cap_Touch_Response, &ambient)) {
-        return;
+        return false;
     }
 
-    //TODO remove temp print statement
-    task_console_printf("Ambient light reading (CH0) = %u\n\r", ambient);
+    bool oldMode = darkMode;
+
+    //debug print statement
+    //task_console_printf("Ambient light reading (CH0) = %u\n\r", ambient);
 
 
     if (darkMode)
@@ -665,6 +715,7 @@ static void update_dark_mode(void)
             master_mind_handle_msg(&msg);
         }
     }
+    return oldMode != darkMode;
 }
 
 
