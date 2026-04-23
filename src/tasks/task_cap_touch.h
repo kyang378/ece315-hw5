@@ -38,6 +38,7 @@ bool task_cap_touch_resources_init(
     cyhal_i2c_t *i2c_obj, 
     cyhal_gpio_t pin_cap_touch_int
 );
+bool system_sensors_get_cap_touch(QueueHandle_t return_queue, uint16_t *x, uint16_t *y);
 
 extern cyhal_i2c_t *I2C_Obj;
 extern QueueHandle_t Queue_Request_Cap_Touch;
