@@ -16,6 +16,8 @@
 
 char APP_DESCRIPTION[] = "ECE353 S26 HW05";
 
+#define HW05_READY_STATUS_ACK_TIMEOUT_MS (500U)
+
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
@@ -27,6 +29,7 @@ SemaphoreHandle_t SPI_Semaphore;
 SemaphoreHandle_t I2C_Semaphore;
 
 QueueHandle_t Queue_LCD;
+static QueueHandle_t Queue_Cap_Touch_Response;
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -63,6 +66,13 @@ static void hw05_queues_init(void)
     if (Queue_Request_Cap_Touch == NULL)
     {
         printf("Failed to create Cap Touch Request Queue\n\r");
+        CY_ASSERT(0);
+    }
+
+    Queue_Cap_Touch_Response = xQueueCreate(1, sizeof(device_response_msg_t));
+    if (Queue_Cap_Touch_Response == NULL)
+    {
+        printf("Failed to create Cap Touch Response Queue\n\r");
         CY_ASSERT(0);
     }
 }  
@@ -333,7 +343,7 @@ void select_cypher(uint8_t cypher_out[4])
          * A. Check for cap‑touch input
          ********************************************************/
         uint16_t x, y;
-        bool touched = system_sensors_get_cap_touch(NULL, &x, &y);
+        bool touched = system_sensors_get_cap_touch(Queue_Cap_Touch_Response, &x, &y);
 
         if (touched)
         {
@@ -407,21 +417,38 @@ void select_cypher(uint8_t cypher_out[4])
 }
 
 /**
- * @brief Sends the status that this player's board is ready 
- * to move to the next state
+ * @brief Sends the one-time initialization status indicating this board is ready.
  * 
- * @param sequence_num used to track the number of tries before an ack is received
+ * This is part of the startup handshake after both boards finish selecting
+ * their cyphers. It is not meant to be sent after every gameplay action.
+ * 
+ * @param sequence_num The next IPC sequence number to use.
  */
 static void send_ready_status(uint16_t *sequence_num)
 {
-    // Send STATUS with OK code
-    ipc_send_status(*sequence_num, IPC_STATUS_OK);
+    bool acked = false;
 
-    // Wait for ACK
-    ipc_wait_for_ack(*sequence_num);
+    while (!acked)
+    {
+        xEventGroupClearBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_ACK_RECEIVED);
+
+        if (!ipc_send_status(*sequence_num, IPC_STATUS_OK))
+        {
+            task_console_printf("Failed to queue ready status (seq=%u)\n\r", *sequence_num);
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        acked = ipc_wait_for_ack(HW05_READY_STATUS_ACK_TIMEOUT_MS);
+
+        if (!acked)
+        {
+            task_console_printf("Ready status ACK timeout (seq=%u), retrying\n\r", *sequence_num);
+            (*sequence_num)++;
+        }
+    }
 
     task_console_printf("Ready status ACKed (seq=%u)\n\r", *sequence_num);
-
     (*sequence_num)++;
 }
 
