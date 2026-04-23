@@ -93,7 +93,7 @@ static void hw05_queues_init(void)
         printf("Failed to create Queue_LCD\n\r");
         while (1);
     }
-}  
+  
 
     Queue_EEPROM_Response = xQueueCreate(1, sizeof(device_response_msg_t));
     if (Queue_EEPROM_Response == NULL)

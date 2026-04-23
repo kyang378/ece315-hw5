@@ -1450,3 +1450,6 @@
 982	1649	7986665525427226	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493
 124	1031	7986667499879187	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw05/hw05.o	f36517809c4e6375
 1031	1758	7986667508932530	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493
+5259	6001	7986679898807570	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/tasks/task_ipc_rx.o	2c6a00f80cac3114
+64	592	7986762306694103	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw05/hw05.o	f36517809c4e6375
+598	5039	7986762312051624	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493

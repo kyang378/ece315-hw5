@@ -7,6 +7,7 @@ What is done/needs doing right now (updated Wednesday 4:00 PM)
 written but not tested, we will need to test this together
 - Players should be able to select their cyphers (with touchscreen), also not tested
 - everything remaining should be in the core loop
+- Select cypher needs to check dark mode status
 
 
 What we missed on Tuesday - 
