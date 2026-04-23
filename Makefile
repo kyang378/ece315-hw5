@@ -177,6 +177,7 @@ CY_COMPILER_PATH=
 CY_WIN_HOME=$(subst \,/,$(USERPROFILE))
 CY_TOOLS_PATHS ?= $(wildcard \
     $(CY_WIN_HOME)/ModusToolbox/tools_* \
+    C:/Users/Public/ModusToolBoxSetup/ModusToolbox/tools_* \
     $(HOME)/ModusToolbox/tools_* \
     /Applications/ModusToolbox/tools_*)
 

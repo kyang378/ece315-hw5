@@ -17,6 +17,7 @@
 char APP_DESCRIPTION[] = "ECE353 S26 HW05";
 
 #define HW05_READY_STATUS_ACK_TIMEOUT_MS (500U)
+#define HW05_EEPROM_HIGH_SCORE_ADDR      (0x0000U)
 
 /*****************************************************************************/
 /* Global Variables                                                          */
@@ -30,6 +31,7 @@ SemaphoreHandle_t I2C_Semaphore;
 
 QueueHandle_t Queue_LCD;
 static QueueHandle_t Queue_Cap_Touch_Response;
+static QueueHandle_t Queue_EEPROM_Response;
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -75,7 +77,150 @@ static void hw05_queues_init(void)
         printf("Failed to create Cap Touch Response Queue\n\r");
         CY_ASSERT(0);
     }
+
+    Queue_EEPROM_Response = xQueueCreate(1, sizeof(device_response_msg_t));
+    if (Queue_EEPROM_Response == NULL)
+    {
+        printf("Failed to create EEPROM Response Queue\n\r");
+        CY_ASSERT(0);
+    }
 }  
+
+/**
+ * @brief Clears the LCD text band used for status text.
+ */
+static void hw05_clear_status_area(void)
+{
+    lcd_draw_rectangle(
+        LCD_W / 2,
+        (LCD_TEXT_H + (2 * LCD_MARGIN)) / 2,
+        LCD_W,
+        LCD_TEXT_H + (2 * LCD_MARGIN),
+        LCD_COLOR_BLACK,
+        true
+    );
+}
+
+/**
+ * @brief Draw the status header at the top of the LCD.
+ */
+static void hw05_draw_status_header(
+    uint8_t high_score,
+    uint8_t exact_matches,
+    uint8_t misplaced_matches)
+{
+    lcd_msg_t msg;
+
+    hw05_clear_status_area();
+
+    if (high_score == 0xFF)
+    {
+        high_score = 0;
+    }
+
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "High: %02u", high_score);
+    lcd_print_message(&msg, 0, 0);
+
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "Last: %1u %1u", exact_matches, misplaced_matches);
+    lcd_print_message(&msg, 165, 0);
+}
+
+/**
+ * @brief Draw a four-tile row with optional highlight.
+ */
+static void hw05_draw_tile_row(
+    lcd_row_t row,
+    const uint8_t digits[4],
+    uint16_t color_fg,
+    uint16_t color_bg,
+    int highlighted_col)
+{
+    lcd_msg_t msg;
+
+    for (int col = 0; col < 4; col++)
+    {
+        msg.command = (col == highlighted_col) ? LCD_CMD_DRAW_TILE_INVERTED
+                                               : LCD_CMD_DRAW_TILE;
+        msg.payload.tile.row = row;
+        msg.payload.tile.col = col;
+        msg.payload.tile.number = digits[col];
+        msg.payload.tile.color_fg = color_fg;
+        msg.payload.tile.color_bg = color_bg;
+        master_mind_handle_msg(&msg);
+    }
+}
+
+/**
+ * @brief Read the high score from EEPROM.
+ */
+static uint8_t hw05_read_high_score(void)
+{
+    uint8_t high_score = 0;
+
+    if (!system_sensors_eeprom_read(
+            Queue_EEPROM_Response,
+            HW05_EEPROM_HIGH_SCORE_ADDR,
+            &high_score))
+    {
+        task_console_printf("EEPROM high score read failed, defaulting to 00\n\r");
+        return 0;
+    }
+
+    if (high_score == 0xFF)
+    {
+        return 0;
+    }
+
+    return high_score;
+}
+
+/**
+ * @brief Reset the high score stored in EEPROM to 0.
+ */
+static void hw05_reset_high_score(void)
+{
+    uint8_t high_score = 0;
+
+    if (!system_sensors_eeprom_write(
+            Queue_EEPROM_Response,
+            HW05_EEPROM_HIGH_SCORE_ADDR,
+            high_score))
+    {
+        task_console_printf("EEPROM high score reset failed\n\r");
+    }
+}
+
+/**
+ * @brief Handle SW3 high-score reset while still in the pre-game setup phase.
+ */
+static void hw05_handle_pre_game_reset(
+    uint8_t *high_score,
+    uint8_t exact_matches,
+    uint8_t misplaced_matches)
+{
+    hw05_reset_high_score();
+    *high_score = hw05_read_high_score();
+    hw05_draw_status_header(*high_score, exact_matches, misplaced_matches);
+    task_console_printf("SW3 pressed: high score reset to %02u\n\r", *high_score);
+}
+
+/**
+ * @brief Draw the cypher-entry screen using the shared LCD layout.
+ */
+static void hw05_draw_cypher_entry_screen(uint8_t high_score)
+{
+    static const uint8_t cypher_defaults[4] = {0, 0, 0, 0};
+    static const uint8_t keypad_top[4] = {0, 1, 2, 3};
+    static const uint8_t keypad_bottom[4] = {4, 5, 6, 7};
+
+    lcd_clear_screen(LCD_COLOR_BLACK);
+    hw05_draw_status_header(high_score, 0, 0);
+    hw05_draw_tile_row(LCD_TILE_ROW_CYPHER, cypher_defaults, LCD_COLOR_RED, LCD_COLOR_BLACK, 0);
+    hw05_draw_tile_row(LCD_TILE_ROW_NUM_0_3, keypad_top, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
+    hw05_draw_tile_row(LCD_TILE_ROW_NUM_4_7, keypad_bottom, LCD_COLOR_GREEN, LCD_COLOR_BLACK, -1);
+}
 
 /**
  * @brief Sends discovery requests until either a request or an ACK
@@ -117,9 +262,6 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
         {
             // Other board initiated discovery - this board is Player 2
             *player1 = false;
-
-            // Send ACK back
-            ipc_send_ack(*sequence_num);
 
             discovery_complete = true;
         }
@@ -279,56 +421,13 @@ void addToCypher(int currSelectTile, int currCypherTile) {
 void select_cypher(uint8_t cypher_out[4])
 {
     lcd_msg_t msg;
+    uint8_t high_score = hw05_read_high_score();
 
     /************************************************************
      * 1. Draw UI: message + cypher tiles + number tiles
      ************************************************************/
-    msg.command = LCD_CMD_PRINT_MESSAGE;
-    snprintf(msg.payload.message, 32, "Select Your Cypher!");
-    master_mind_handle_msg(&msg);
-
-    // Draw 4 cypher tiles (first one inverted to show entry position)
-    for (int col = 0; col < 4; col++)
-    {
-        msg.command = (col == 0) ? LCD_CMD_DRAW_TILE_INVERTED
-                                 : LCD_CMD_DRAW_TILE;
-
-        msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
-        msg.payload.tile.col = col;
-        msg.payload.tile.number = 0;
-        msg.payload.tile.color_fg = LCD_COLOR_RED;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
-
-        master_mind_handle_msg(&msg);
-    }
-
-    // Draw number tiles 0–3
-    for (int col = 0; col < 4; col++)
-    {
-        msg.command = LCD_CMD_DRAW_TILE;
-
-        msg.payload.tile.row = LCD_TILE_ROW_NUM_0_3;
-        msg.payload.tile.col = col;
-        msg.payload.tile.number = col;
-        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
-
-        master_mind_handle_msg(&msg);
-    }
-
-    // Draw number tiles 4–7
-    for (int col = 0; col < 4; col++)
-    {
-        msg.command = LCD_CMD_DRAW_TILE;
-
-        msg.payload.tile.row = LCD_TILE_ROW_NUM_4_7;
-        msg.payload.tile.col = col;
-        msg.payload.tile.number = col + 4;
-        msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
-
-        master_mind_handle_msg(&msg);
-    }
+    hw05_draw_cypher_entry_screen(high_score);
+    task_console_printf("Select your cypher with the touchscreen, press SW1 to confirm each digit, and use SW3 to reset the high score before gameplay starts.\n\r");
 
     /************************************************************
      * 2. cypher entry loop
@@ -356,7 +455,7 @@ void select_cypher(uint8_t cypher_out[4])
                 if (currSelectTile == -1)
                 {
                     // Highlight the touched tile
-                    switchSelectTiles(0, touched_tile); // 0 is ignored for deselect
+                    switchSelectTiles(-1, touched_tile);
                     currSelectTile = touched_tile;
                 }
                 else if (touched_tile != currSelectTile)
@@ -373,11 +472,16 @@ void select_cypher(uint8_t cypher_out[4])
          ********************************************************/
         EventBits_t events = xEventGroupWaitBits(
             ECE353_RTOS_Events,
-            ECE353_EVENT_SW1_PRESSED,
+            ECE353_EVENT_SW1_PRESSED | ECE353_EVENT_SW3_PRESSED,
             pdTRUE,     // clear bit
             pdFALSE,    // wait for ANY
             pdMS_TO_TICKS(20)
         );
+
+        if (events & ECE353_EVENT_SW3_PRESSED)
+        {
+            hw05_handle_pre_game_reset(&high_score, 0, 0);
+        }
 
         //if SW1 is pressed, save this digit and move to next, or exit if done
         if (events & ECE353_EVENT_SW1_PRESSED)
@@ -414,6 +518,9 @@ void select_cypher(uint8_t cypher_out[4])
     task_console_printf("cypher entry complete: %d %d %d %d\n\r",
                         cypher_out[0], cypher_out[1],
                         cypher_out[2], cypher_out[3]);
+
+    /* Redraw the header so the screen is not left in setup mode text. */
+    hw05_draw_status_header(high_score, 0, 0);
 }
 
 /**
@@ -455,18 +562,31 @@ static void send_ready_status(uint16_t *sequence_num)
 /**
  * @brief waits for the other player to send a ready status
  */
-static void wait_for_other_player_ready(void)
+static void wait_for_other_player_ready(uint8_t *high_score)
 {
     task_console_printf("Waiting for other player...\n\r");
+    task_console_printf("SW3 can still reset the high score until gameplay begins.\n\r");
 
-    // Wait for STATUS_RECEIVED event
-    xEventGroupWaitBits(
-        ECE353_RTOS_Events,
-        ECE353_EVENT_IPC_STATUS_RECEIVED,
-        pdTRUE,     // clear on exit
-        pdFALSE,    // wait for ANY
-        portMAX_DELAY
-    );
+    while (1)
+    {
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_IPC_STATUS_RECEIVED | ECE353_EVENT_SW3_PRESSED,
+            pdTRUE,     // clear on exit
+            pdFALSE,    // wait for ANY
+            pdMS_TO_TICKS(50)
+        );
+
+        if (events & ECE353_EVENT_SW3_PRESSED)
+        {
+            hw05_handle_pre_game_reset(high_score, 0, 0);
+        }
+
+        if (events & ECE353_EVENT_IPC_STATUS_RECEIVED)
+        {
+            break;
+        }
+    }
 
     task_console_printf("Other player is ready!\n\r");
 }
@@ -542,6 +662,7 @@ void task_hw05_system_control(void *pvParameters)
 {
     uint16_t sequence_num = 0;
     bool player1 = false;
+    uint8_t high_score = 0;
 
     //Establish communication and assign roles
     discover_board(&sequence_num, &player1);
@@ -570,14 +691,18 @@ void task_hw05_system_control(void *pvParameters)
     send_ready_status(&sequence_num);
 
     //Wait for the other board's ready message
-    wait_for_other_player_ready();
+    high_score = hw05_read_high_score();
+    wait_for_other_player_ready(&high_score);
 
     task_console_printf("Both players ready — starting game!\n\r");
+    task_console_printf("Player 1 guesses first.\n\r");
+
+    hw05_draw_status_header(high_score, 0, 0);
 
     //enter core loop
     while (true)
     {
-        // Game loop will go here later
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
