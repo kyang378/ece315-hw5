@@ -41,7 +41,8 @@ bool lcd_print_message(lcd_msg_t* msg, uint16_t currX, uint16_t currY) {
         const uint8_t* bitmap = Consolas_20ptFontInfo.bitmap + offset;
 
         //draw the character
-        lcd_draw_image(
+        if (darkMode) { //white text black background
+            lcd_draw_image(
             currX,
             currY,
             width,
@@ -51,6 +52,19 @@ bool lcd_print_message(lcd_msg_t* msg, uint16_t currX, uint16_t currY) {
             LCD_COLOR_BLACK,
             false
         );
+        } else { //black text white bg
+            lcd_draw_image(
+            currX,
+            currY,
+            width,
+            height,
+            bitmap,
+            LCD_COLOR_BLACK,
+            LCD_COLOR_WHITE,
+            false
+        );
+        }
+        
 
         //move to next print location
         currX += width;
@@ -131,7 +145,12 @@ bool master_mind_handle_msg(lcd_msg_t* msg) {
                 //draw as standard tile
                 return lcd_draw_tile(msg);
             case LCD_CMD_CLEAR_SCREEN:
-                lcd_clear_screen(LCD_COLOR_BLACK);
+                if (darkMode) {
+                    lcd_clear_screen(LCD_COLOR_BLACK);
+                } else {
+                    lcd_clear_screen(LCD_COLOR_WHITE);
+                }
+                
                 return true;
             default:
                 printf("!!!Error: Unrecognized LCD Command: %d\n", msg->command);

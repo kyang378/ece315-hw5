@@ -30,6 +30,8 @@ SemaphoreHandle_t I2C_Semaphore;
 
 QueueHandle_t Queue_LCD;
 static QueueHandle_t Queue_Cap_Touch_Response;
+
+bool darkMode;
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -74,6 +76,20 @@ static void hw05_queues_init(void)
     {
         printf("Failed to create Cap Touch Response Queue\n\r");
         CY_ASSERT(0);
+    }
+    
+    //Joystick queue
+    Queue_Requests_Joystick = xQueueCreate(4, sizeof(device_request_msg_t));
+    if (Queue_Requests_Joystick == NULL) {
+        printf("Failed to create Queue_Requests_Joystick\n\r");
+        while (1);
+    }
+
+    /* Queue for sending LCD draw/update requests */
+    Queue_LCD = xQueueCreate(8, sizeof(lcd_msg_t));
+    if (Queue_LCD == NULL) {
+        printf("Failed to create Queue_LCD\n\r");
+        while (1);
     }
 }  
 
@@ -223,7 +239,12 @@ void switchSelectTiles(int currTile, int nextTile) {
         msg.payload.tile.col = old_col;
         msg.payload.tile.number = currTile;
         msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if (darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
+        
         master_mind_handle_msg(&msg);
     }
 
@@ -234,7 +255,11 @@ void switchSelectTiles(int currTile, int nextTile) {
         msg.payload.tile.col = new_col;
         msg.payload.tile.number = nextTile;
         msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if (darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
         master_mind_handle_msg(&msg);
     }
     
@@ -287,9 +312,14 @@ void select_cypher(uint8_t cypher_out[4])
     /************************************************************
      * 1. Draw UI: message + cypher tiles + number tiles
      ************************************************************/
+    //do always for select cypher, will have to check whether dark mode has changed in other functoins
+    msg.command = LCD_CMD_CLEAR_SCREEN;
+    master_mind_handle_msg(&msg);
+
     msg.command = LCD_CMD_PRINT_MESSAGE;
     snprintf(msg.payload.message, 32, "Select Your Cypher!");
     master_mind_handle_msg(&msg);
+
 
     // Draw 4 cypher tiles (first one inverted to show entry position)
     for (int col = 0; col < 4; col++)
@@ -301,7 +331,12 @@ void select_cypher(uint8_t cypher_out[4])
         msg.payload.tile.col = col;
         msg.payload.tile.number = 0;
         msg.payload.tile.color_fg = LCD_COLOR_RED;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if(darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
+        
 
         master_mind_handle_msg(&msg);
     }
@@ -315,7 +350,12 @@ void select_cypher(uint8_t cypher_out[4])
         msg.payload.tile.col = col;
         msg.payload.tile.number = col;
         msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if (darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
+        
 
         master_mind_handle_msg(&msg);
     }
@@ -329,7 +369,12 @@ void select_cypher(uint8_t cypher_out[4])
         msg.payload.tile.col = col;
         msg.payload.tile.number = col + 4;
         msg.payload.tile.color_fg = LCD_COLOR_GREEN;
-        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        if (darkMode) {
+            msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+        } else {
+            msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+        }
+        
 
         master_mind_handle_msg(&msg);
     }
@@ -404,7 +449,12 @@ void select_cypher(uint8_t cypher_out[4])
                     msg.payload.tile.col = currcypherTile;
                     msg.payload.tile.number = 0;
                     msg.payload.tile.color_fg = LCD_COLOR_RED;
-                    msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    if (darkMode) {
+                        msg.payload.tile.color_bg = LCD_COLOR_BLACK;
+                    } else {
+                        msg.payload.tile.color_bg = LCD_COLOR_WHITE;
+                    }
+                    
 
                     master_mind_handle_msg(&msg);
                 }
@@ -474,6 +524,46 @@ static void wait_for_other_player_ready(void)
 
     task_console_printf("Other player is ready!\n\r");
 }
+
+static void update_dark_mode(void)
+{
+    uint16_t ambient = 0;
+
+    if (!system_sensors_get_light(Queue_Cap_Touch_Response, &ambient)) {
+        return;
+    }
+
+    //TODO remove temp print statement
+    task_console_printf("Ambient light reading (CH0) = %u\n\r", ambient);
+
+
+    if (darkMode)
+    {
+        // Currently dark - switch to light only if bright enough
+        if (ambient > 350)
+        {
+            darkMode = false;
+            task_console_printf("Switching to LIGHT mode (ambient=%u)\n\r", ambient);
+
+            lcd_msg_t msg = { .command = LCD_CMD_CLEAR_SCREEN };
+            master_mind_handle_msg(&msg);
+        }
+    }
+    else
+    {
+        // Currently light - switch to dark only if dim enough
+        if (ambient < 180)
+        {
+            darkMode = true;
+            task_console_printf("Switching to DARK mode (ambient=%u)\n\r", ambient);
+
+            lcd_msg_t msg = { .command = LCD_CMD_CLEAR_SCREEN };
+            master_mind_handle_msg(&msg);
+        }
+    }
+}
+
+
 
 
 
@@ -546,6 +636,8 @@ void task_hw05_system_control(void *pvParameters)
 {
     uint16_t sequence_num = 0;
     bool player1 = false;
+    darkMode = true;
+
 
     //Establish communication and assign roles
     discover_board(&sequence_num, &player1);
@@ -561,12 +653,13 @@ void task_hw05_system_control(void *pvParameters)
 
     // 2. Cypher selection
     //Allocate storage for this player's cypher
+    
     uint8_t my_cypher[4] = {0};
 
     //Let the user select their cypher
     select_cypher(my_cypher);
 
-    // Debug print
+    //Debug print
     //task_console_printf("My cypher: %d %d %d %d\n\r", my_cypher[0], my_cypher[1], my_cypher[2], my_cypher[3]);
 
     //3. Wait for both players to be ready and begin game
@@ -581,6 +674,10 @@ void task_hw05_system_control(void *pvParameters)
     //enter core loop
     while (true)
     {
+        //check light/dark mode
+        //this MAY overwrite other things on screen
+        update_dark_mode();
+        vTaskDelay(pdMS_TO_TICKS(250));   // Check 4 times per second
         // Game loop will go here
     }
 }
@@ -636,19 +733,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
-     /* Create the FreeRTOS queues */
-    Queue_Requests_Joystick = xQueueCreate(4, sizeof(device_request_msg_t));
-    if (Queue_Requests_Joystick == NULL) {
-        printf("Failed to create Queue_Requests_Joystick\n\r");
-        while (1);
-    }
 
-    /* Queue for sending LCD draw/update requests */
-    Queue_LCD = xQueueCreate(8, sizeof(lcd_msg_t));
-    if (Queue_LCD == NULL) {
-        printf("Failed to create Queue_LCD\n\r");
-        while (1);
-    }
 
     /* Initialize LCD task resources */
     if (!task_lcd_resources_init(Queue_LCD)) {
