@@ -83,6 +83,7 @@ void task_ipc_rx(void *param)
                     {
                         case IPC_STATUS_OK:
                             printf("Received status: OK\n\r");
+                            xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_STATUS_RECEIVED);
                             break;
 
                         case IPC_STATUS_CRC_FAIL:
