@@ -152,8 +152,9 @@ static void hw05_draw_status_header(
     lcd_print_message(&msg, 0, 0);
 
     msg.command = LCD_CMD_PRINT_MESSAGE;
+    //TODO maybe try to print exact_matches in green and misplaced in yellos? 
     snprintf(msg.payload.message, sizeof(msg.payload.message), "Last: %1u %1u", exact_matches, misplaced_matches);
-    lcd_print_message(&msg, 165, 0);
+    lcd_print_message(&msg, 130, 0);
 }
 
 /**
@@ -489,7 +490,9 @@ void select_cypher(uint8_t cypher_out[4])
      * 1. Draw UI: message + cypher tiles + number tiles
      ************************************************************/
     hw05_draw_cypher_entry_screen(high_score);
-    task_console_printf("Select your cypher with the touchscreen, press SW1 to confirm each digit, and use SW3 to reset the high score before gameplay starts.\n\r");
+    task_console_printf("Select your cypher with the touchscreen, \n\r");
+    task_console_printf("press SW1 to confirm each digit,\n\r");
+    task_console_printf("use SW3 to reset the high score before gameplay starts.\n\r");
 
     /************************************************************
      * 2. cypher entry loop
@@ -791,7 +794,16 @@ void task_hw05_system_control(void *pvParameters)
 {
     uint16_t sequence_num = 0;
     bool player1 = false;
-    darkMode = true;
+    darkMode = true; //default to dark mode
+    hw05_game_state_t state = HW05_STATE_INIT;
+    // increments after every guess from either player
+        //even turns - player 1 guesses
+        //odd turns - player 2 guesses
+    int turn_number = 0;   
+
+    //tracks the accuracy of this board's last guess
+    uint8_t last_exact = 0;
+    uint8_t last_misplaced = 0;
 
     uint8_t high_score = 0;
 
@@ -834,13 +846,118 @@ void task_hw05_system_control(void *pvParameters)
     //enter core loop
     while (true)
     {
-        //check light/dark mode
-        //this MAY overwrite other things on screen
-        update_dark_mode();
-        vTaskDelay(pdMS_TO_TICKS(250));   // Check 4 times per second
-        // Game loop will go here
-        vTaskDelay(pdMS_TO_TICKS(100));
+        if (update_dark_mode())
+        {
+            // TODO: redraw current screen based on state
+            //may not be necessary as most helper methods that 
+            //take control for a period of time will have to implement
+            //this
+        }
+
+        bool my_turn =
+            (player1 && (turn_number % 2 == 0)) ||
+            (!player1 && (turn_number % 2 == 1));
+
+        switch (state)
+        {
+            case HW05_STATE_INIT:
+                /*
+                * Conditions:
+                * - Player 1 always starts
+                * - If it's my turn, go to ENTER_GUESS
+                * - Otherwise, wait for opponent's guess
+                */
+                state = my_turn ? HW05_STATE_ENTER_GUESS
+                                : HW05_STATE_WAIT_FOR_GUESS;
+                break;
+
+
+            case HW05_STATE_ENTER_GUESS:
+                /*
+                * TODO:
+                * - Draw guess entry UI
+                * - Let user enter 4-digit guess
+                * - When confirmed:
+                *      -> send guess via IPC
+                *      -> state = HW05_STATE_WAIT_FOR_FEEDBACK
+                */
+                break;
+
+
+            case HW05_STATE_WAIT_FOR_GUESS:
+                /*
+                * TODO:
+                * 
+                * - display message "Waiting for opponent to guess..." and no guess UI
+                * - display last entry (if there was one) with feedback, with no UI we
+                * can be more clear with feedback before compressing into the header
+                * - Wait for IPC event with opponent's guess
+                * - When received:
+                *      -> store guess
+                *      -> state = HW05_STATE_EVAL_GUESS
+                */
+                break;
+
+
+            case HW05_STATE_EVAL_GUESS:
+                /*
+                * TODO:
+                * - Compare opponent's guess to my cypher
+                * - Compute exact & misplaced
+                * - Save into last_exact, last_misplaced
+                * - state = HW05_STATE_SEND_FEEDBACK
+                */
+                break;
+
+
+            case HW05_STATE_SEND_FEEDBACK:
+                /*
+                * TODO:
+                * - Send feedback to opponent via IPC
+                * - state = HW05_STATE_CHECK_WIN
+                */
+                break;
+
+
+            case HW05_STATE_WAIT_FOR_FEEDBACK:
+                /*
+                * TODO:
+                * - Wait for IPC feedback
+                * - When received:
+                *      -> update last_exact, last_misplaced
+                *      -> state = HW05_STATE_CHECK_WIN
+                */
+                break;
+
+
+            case HW05_STATE_CHECK_WIN:
+                /*
+                * TODO:
+                * - If last_exact == 4:
+                *      -> state = HW05_STATE_GAME_OVER
+                * - Else:
+                *      -> turn_number++
+                *      -> state = (my_turn ? WAIT_FOR_GUESS : ENTER_GUESS)
+                */
+                break;
+
+
+            case HW05_STATE_GAME_OVER:
+                /*
+                * TODO:
+                * - Display win/lose
+                * - Update high score if needed
+                * - Wait for SW1 to restart
+                * - Reset turn_number = 0
+                * - state = HW05_STATE_INIT
+                */
+                break;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
+
+
 }
 
 
