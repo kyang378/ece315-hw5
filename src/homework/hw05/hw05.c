@@ -1032,6 +1032,54 @@ static void wait_for_other_player_ready(uint8_t *high_score)
     task_console_printf("Other player is ready!\n\r");
 }
 
+
+void score_guess(
+    const uint8_t cypher[4],
+    const uint8_t guess[4],
+    uint8_t *exact_out,
+    uint8_t *misplaced_out)
+{
+    uint8_t exact = 0;
+    uint8_t misplaced = 0;
+
+    // Count of remaining (non-exact) digits 0–7 in cypher
+    uint8_t cypher_counts[8] = {0};
+
+    // 1) First pass: count exact matches and build counts for non-exact cypher digits
+    for (int i = 0; i < 4; i++)
+    {
+        if (guess[i] == cypher[i])
+        {
+            exact++;
+        }
+        else
+        {
+            cypher_counts[cypher[i]]++;
+        }
+    }
+
+    // 2) Second pass: count misplaced using only non-exact guess digits
+    for (int i = 0; i < 4; i++)
+    {
+        if (guess[i] == cypher[i])
+        {
+            // already counted as exact, skip
+            continue;
+        }
+
+        uint8_t d = guess[i];
+        if (cypher_counts[d] > 0)
+        {
+            misplaced++;
+            cypher_counts[d]--;   // consume this occurrence
+        }
+    }
+
+    *exact_out = exact;
+    *misplaced_out = misplaced;
+}
+
+
 static bool update_dark_mode(void)
 {
     uint16_t ambient = 0;
@@ -1287,40 +1335,21 @@ void task_hw05_system_control(void *pvParameters)
 
             case HW05_STATE_EVAL_GUESS:
             {
-                /*
-                * TODO:
-                * - Compare opponent's guess to my cypher
-                * - Compute exact & misplaced
-                * - Save into opponent_exact, opponent_misplaced
-                * - state = HW05_STATE_SEND_FEEDBACK
-                */
-                opponent_exact = 0;
-                opponent_misplaced = 0;
+                // Compute exact & misplaced using the correct two‑pass logic
+                score_guess(
+                    my_cypher,          // your secret code
+                    opponent_guess,     // their guess
+                    &opponent_exact,
+                    &opponent_misplaced
+                );
 
-                // Evaluate the opponent's guess against my cypher.
-                for (int i = 0; i < 4; i++)
-                {
-                    if (opponent_guess[i] == my_cypher[i])
-                    {
-                        opponent_exact++;
-                    }
-                    else
-                    {
-                        for (int j = 0; j < 4; j++)
-                        {
-                            if (opponent_guess[i] == my_cypher[j])
-                            {
-                                opponent_misplaced++;
-                                break;
-                            }
-                        }
-                    }
-                }
+                task_console_printf("Opponent guess scored: exact=%u misplaced=%u\n\r",
+                                    opponent_exact, opponent_misplaced);
 
                 state = HW05_STATE_SEND_FEEDBACK;
-
                 break;
             }
+
 
 
             case HW05_STATE_SEND_FEEDBACK:
