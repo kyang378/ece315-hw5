@@ -86,6 +86,7 @@ VERBOSE=
 # added to the build
 #
 COMPONENTS=FREERTOS
+# COMPONENTS=
 
 # Like COMPONENTS, but disable optional code that was enabled by default.
 DISABLE_COMPONENTS=
@@ -174,14 +175,11 @@ CY_COMPILER_PATH=
 # Locate ModusToolbox helper tools folders in default installation
 # locations for Windows, Linux, and macOS.
 CY_WIN_HOME=$(subst \,/,$(USERPROFILE))
-
-CY_TOOLS_PATHS = \
-    C:/Users/Public/ModusToolBoxSetup/ModusToolbox/tools_3.7
-
-# CY_TOOLS_PATHS ?= $(wildcard \
-#     $(CY_WIN_HOME)/ModusToolbox/tools_* \
-#     $(HOME)/ModusToolbox/tools_* \
-#     /Applications/ModusToolbox/tools_*)
+CY_TOOLS_PATHS ?= $(wildcard \
+    $(CY_WIN_HOME)/ModusToolbox/tools_* \
+    C:/Users/Public/ModusToolBoxSetup/ModusToolbox/tools_* \
+    $(HOME)/ModusToolbox/tools_* \
+    /Applications/ModusToolbox/tools_*)
 
 # If you install ModusToolbox software in a custom location, add the path to its
 # "tools_X.Y" folder (where X and Y are the version number of the tools

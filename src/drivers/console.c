@@ -27,4 +27,3 @@ void console_init(void)
         CY_ASSERT(0); // Initialization failed, assert to stop execution
     }
 }
-

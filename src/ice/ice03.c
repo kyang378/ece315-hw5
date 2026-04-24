@@ -13,6 +13,12 @@
 #if defined(ICE03)
 #include "drivers.h"
 #include <stdio.h>
+#include "leds.h"
+#include "buttons.h"
+#include "ece353-events.h"
+#include "ece353-pins.h"
+#include "timer.h"
+
 
 char APP_DESCRIPTION[] = "ECE353: ICE 03 - Timer Interrupts/Debounce Buttons";
 
@@ -37,11 +43,21 @@ char APP_DESCRIPTION[] = "ECE353: ICE 03 - Timer Interrupts/Debounce Buttons";
  * This function will initialize all of the hardware resources for
  * the ICE
  */
-void app_init_hw(void)
-{
+void app_init_hw(void) {
     cy_rslt_t rslt;
 
+
+    //CONSOLE INIT COMES FIRST
     console_init();
+    printf("Initializing ICE03 Hardware...\n");
+
+    // //enable RGB LED pins as outputs
+     leds_init();
+    // //enable buttons as inputs
+     buttons_init();  //NOTE buttons_init calls buttons_init_timer internally
+    // //initialize button debounce timer
+     buttons_init_timer();
+
     printf("\x1b[2J\x1b[;H");
     printf("**************************************************\n\r");
     printf("* %s\n\r", APP_DESCRIPTION);
@@ -49,25 +65,6 @@ void app_init_hw(void)
     printf("* Time: %s\n\r", __TIME__);
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
-
-    // initialize LEDs, buttons, and button timer
-    if ((rslt = leds_init_gpio()) != CY_RSLT_SUCCESS) {
-        printf("Error initializing LEDs\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a while
-        CY_ASSERT(0);
-    }
-
-    if ((rslt = buttons_init_gpio()) != CY_RSLT_SUCCESS) {
-        printf("Error initializing buttons\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a while
-        CY_ASSERT(0);
-    }
-
-    if ((rslt = buttons_init_timer()) != CY_RSLT_SUCCESS) {
-        printf("Error initializing button timer\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a while
-        CY_ASSERT(0);
-    }
 
 }
 
@@ -78,112 +75,132 @@ void app_init_hw(void)
  * @brief
  * This function implements the behavioral requirements for the ICE
  */
-void app_main(void)
-{
-    uint32_t button_press_count = 0;
+void app_main(void) {
+    printf("Starting ICE03 Main Application...\n");
+    typedef enum{
+        STATE_INIT = 0,
+        STATE_SW1_DET = 1,
+        STATE_SW2_DET_1 = 2,
+        STATE_SW2_DET_2 = 3,
+        STATE_SW3_DET = 4
+    } ice03_state_t;
 
-    // simple FSM to track button events and set LED states accordingly
-    typedef enum {
-        INIT,
-        SW1_DET,
-        SW2_DET_1,
-        SW2_DET_2,
-        SW3_DET
-    } fsm_state_t;
+    //initialize FSM
+    ice03_state_t current_state = STATE_INIT;
+    printf("Entering while loop");
 
-    // reset to INIT state with red led ON
-    fsm_state_t current_state = INIT;
-    leds_set_state(LED_RED, LED_STATE_ON);
-
-    while (1)
-    {
-        // state transition logic applies when at least one button event is detected
-        if (ECE353_Events.sw1 || ECE353_Events.sw2 || ECE353_Events.sw3) {
-            // flow: button timer triggers timer interrupt every 5ms. When we have 5 lows
-            // (asserted) for a particular button, we set that button pressed event to be 1
-            // thus triggering this if statement
-            printf("Button press #%u\n\r", ++button_press_count);
-
-            // The diagram does not specify what to do if multiple buttons are pressed at the same time, so we make arbitrary decisions about priority of branches here.
-
-            // We need two switch statements, one for state transitions and one for which leds to toggle based on the state we just transitioned to. 
-            
-            // This also means the one for setting leds would have to be after this switch statement. We have to do this because we need to know what the current state is before we can set the leds accordingly. 
-
-            // Setting the leds within the same switch statement would not work because the switch statement is only triggered when a button event occurs, so we may go to another state, therefore the state we are in while the switch statement is triggered may not be the "current" state we want to set the leds for.
-
-            /// state transition logic ///
-            switch (current_state) {
-                case INIT:
+    //initialize LEDs to match initial state
+    leds_set_state(LED_RED, LED_STATE_ON); 
+    leds_set_state(LED_GREEN, LED_STATE_OFF);
+    leds_set_state(LED_BLUE, LED_STATE_OFF); 
+    
+    while(1) {
+        if( ECE353_Events.sw1 || ECE353_Events.sw2 || ECE353_Events.sw3) {
+            switch(current_state) {
+                // Code to implement the FSM
+                case STATE_INIT: //SW1 sends to next state, else stays
                     if (ECE353_Events.sw1) {
-                        current_state = SW1_DET;
-                    } // (otherwise stay in INIT)             
+                        ECE353_Events.sw1 = 0;
+                        current_state = STATE_SW1_DET;
+                    } else if (ECE353_Events.sw2) {
+                        ECE353_Events.sw2 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw3) {
+                        ECE353_Events.sw3 = 0;
+                        current_state = STATE_INIT;
+                    }
                     break;
-                case SW1_DET:
+                case STATE_SW1_DET: //SW2 sends to next state, SW1 and SW3 back to init
                     if (ECE353_Events.sw2) {
                         ECE353_Events.sw2 = 0;
-                        current_state = SW2_DET_1;
-                    } else {
-                        current_state = INIT;
+                        current_state = STATE_SW2_DET_1;
+                    } else if (ECE353_Events.sw1) {
+                        ECE353_Events.sw1 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw3) {
+                        ECE353_Events.sw3 = 0;
+                        current_state = STATE_INIT;
                     }
                     break;
-                case SW2_DET_1:
+                case STATE_SW2_DET_1: //SW2 sends to next state, SW1 and SW3 back to init
                     if (ECE353_Events.sw2) {
-                        current_state = SW2_DET_2;
-                    } else {
-                        current_state = INIT;
+                        ECE353_Events.sw2 = 0;
+                        current_state = STATE_SW2_DET_2;
+                    } else if (ECE353_Events.sw1) {
+                        ECE353_Events.sw1 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw3) {
+                        ECE353_Events.sw3 = 0;
+                        current_state = STATE_INIT;
                     }
                     break;
-                case SW2_DET_2:
+                case STATE_SW2_DET_2: //SW3 sends to next state, SW1 and SW2 back to init
                     if (ECE353_Events.sw3) {
-                        current_state = SW3_DET;
-                    } else {
-                        current_state = INIT;
+                        ECE353_Events.sw3 = 0;
+                        current_state = STATE_SW3_DET;
+                    } else if (ECE353_Events.sw1) {
+                        ECE353_Events.sw1 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw2) {
+                        ECE353_Events.sw2 = 0;
+                        current_state = STATE_INIT;
                     }
                     break;
-                case SW3_DET:
-                    current_state = INIT;
+                case STATE_SW3_DET: //Any button sends back to init
+                    if (ECE353_Events.sw1) {
+                        ECE353_Events.sw1 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw2) {
+                        ECE353_Events.sw2 = 0;
+                        current_state = STATE_INIT;
+                    } else if (ECE353_Events.sw3) {
+                        ECE353_Events.sw3 = 0;
+                        current_state = STATE_INIT;
+                    }
                     break;
                 default:
-                    printf("ICE03: Unknown State!\n\r");
-                    current_state = INIT;
-                    break;
+                    printf("ICE03: Unknown State!\n");
+                    current_state = STATE_INIT;
             }
 
-            // CONSUME THE SW EVENTS HERE, whichever it may have been activated
-            ECE353_Events.sw1 = 0; ECE353_Events.sw2 = 0; ECE353_Events.sw3 = 0;
 
-            /// leds setting logic ///
-            switch (current_state) {
-                case INIT:
+            /* Update the LEDs based on the current state */
+            switch(current_state) {
+                // Code that determines which LEDs should be on/off
+                case STATE_INIT:
                     leds_set_state(LED_RED, LED_STATE_ON);
                     leds_set_state(LED_GREEN, LED_STATE_OFF);
                     leds_set_state(LED_BLUE, LED_STATE_OFF);
                     break;
-                case SW1_DET:
+                case STATE_SW1_DET:
                     leds_set_state(LED_RED, LED_STATE_ON);
                     leds_set_state(LED_GREEN, LED_STATE_OFF);
                     leds_set_state(LED_BLUE, LED_STATE_ON);
                     break;
-                case SW2_DET_1:
+                case STATE_SW2_DET_1:
                     leds_set_state(LED_RED, LED_STATE_OFF);
                     leds_set_state(LED_GREEN, LED_STATE_OFF);
                     leds_set_state(LED_BLUE, LED_STATE_ON);
                     break;
-                case SW2_DET_2:
+                case STATE_SW2_DET_2:
                     leds_set_state(LED_RED, LED_STATE_OFF);
                     leds_set_state(LED_GREEN, LED_STATE_ON);
                     leds_set_state(LED_BLUE, LED_STATE_ON);
                     break;
-                case SW3_DET:
+                case STATE_SW3_DET:
                     leds_set_state(LED_RED, LED_STATE_OFF);
                     leds_set_state(LED_GREEN, LED_STATE_ON);
                     leds_set_state(LED_BLUE, LED_STATE_OFF);
                     break;
                 default:
+                    printf("ICE03: Unknown State when updating LEDs!\n");
+                    leds_set_state(LED_RED, LED_STATE_OFF);
+                    leds_set_state(LED_GREEN, LED_STATE_OFF);
+                    leds_set_state(LED_BLUE, LED_STATE_OFF);
                     break;
             }
         }
     }
+
 }
 #endif

@@ -49,15 +49,6 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
-    // initialize the leds
-    rslt = leds_init_gpio();
-    if (rslt != CY_RSLT_SUCCESS) 
-    {
-        printf("Error initializing LEDs\n\r");
-        CY_ASSERT(0);
-    }
-
-    
 
 }
 

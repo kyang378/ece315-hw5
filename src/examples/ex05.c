@@ -9,7 +9,7 @@
  * 
  */
 #include "main.h"
-
+#include "FreeRTOSConfig.h"
 #if defined(EX05)
 
 #include "drivers.h"
@@ -23,10 +23,8 @@ char APP_DESCRIPTION[] = "ECE353: Example 05 - FreeRTOS Tasks";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
-
-// set to volatile because multiple tasks will access/modify it, so we want to
-// make sure we get the most up-to-date value
 volatile bool buzzer_enable = false;
+
 
 /*****************************************************************************/
 /* Function Declarations                                                     */
@@ -38,96 +36,72 @@ void task_buzzer(void *arg);
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
-
-// monitor the switch and debounce the push button every 15 ms
-// if pressed, ENABLE the buzzer
 void task_button_sw1(void *arg)
 {
-    (void)arg; // Unused parameter
-
-    // 32 => can count to 4 billion, so no worry if we pressed it for too long
-    // and have it be wrapped to zero
+    (void)arg; // Unused parameter //Not in example, delete if dysfunctional
     uint32_t button_count = 0;
-
-    printf("task_button_sw1 created\n\r");
+    printf("SW1 Task Created\n\r");
 
     while(1)
     {
-        // check the button
-        if ((PORT_BUTTON_SW1->IN & MASK_BUTTON_PIN_SW1) == 0) // active low
-        {
+        //check the button
+        if((PORT_BUTTON_SW1->IN & MASK_BUTTON_SW1) == 0) {
             button_count++;
 
-            if (button_count == 2)
-            {
-                printf("SW1 Pressed --- Enabling Buzzer\n\r");
-                // set a global variable that indicates the buzzer should be turned on
+            if(button_count == 2) {
+                printf("SW1 Pressed - buzzer enabled\n\r");
+                //set a global variable
                 buzzer_enable = true;
-            }
-        }
-        else
-        {
+            } 
+        } else {
             button_count = 0;
         }
-
-        // delay for 15ms by BLOCKING the task to allow other tasks to use the CPU
-        vTaskDelay(pdMS_TO_TICKS(15)); // takes in number of ticks
+        //delay 15ms
+        vTaskDelay(pdMS_TO_TICKS(15));
 
     }
+
 }
 
-// same monitor and debounce as previous task; if pressed, DISABLE the buzzer
 void task_button_sw2(void *arg)
 {
     (void)arg; // Unused parameter
-
-    // 32 => can count to 4 billion, so no worry if we pressed it for too long
-    // and have it be wrapped to zero
     uint32_t button_count = 0;
+    printf("SW2 Task Created\n\r");
 
-    printf("task_button_sw2 created\n\r");
-
-    while(1)
+    while (1)
     {
-        // check the button
-        if ((PORT_BUTTON_SW2->IN & MASK_BUTTON_PIN_SW2) == 0) // active low
-        {
+        //check the button
+        if((PORT_BUTTON_SW2->IN & MASK_BUTTON_SW2) == 0) {
             button_count++;
 
-            if (button_count == 2)
-            {
-                printf("SW2 Pressed --- Disabling Buzzer\n\r");
-                // set a global variable that indicates the buzzer should be turned off
+            if(button_count == 2) {
+                printf("SW2 Pressed - buzzer disabled\n\r");
+                //set a global variable
                 buzzer_enable = false;
-            }
-        }
-        else
-        {
+            } 
+        } else {
             button_count = 0;
         }
-
-        // delay for 15ms by BLOCKING the task to allow other tasks to use the CPU
-        vTaskDelay(pdMS_TO_TICKS(15)); // takes in number of ticks
+        //delay 15ms
+        vTaskDelay(pdMS_TO_TICKS(15));
 
     }
 }
 
-// checks buzzer_enable and handle accordingly
 void task_buzzer(void *arg)
 {
     (void)arg; // Unused parameter
+    printf("Buzzer Task Created\n\r");
 
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(100));
 
-        if (buzzer_enable)
-        {
-            buzzer_on();
-        }
-        else
-        {
-            buzzer_off();
+        if(buzzer_enable) {
+            buzzer_on(); //may need to write this method
+        } else {
+            buzzer_off(); //may need to write this method
         }
     }
 }
@@ -151,9 +125,8 @@ void app_init_hw(void)
 
     /* Initialize the buttons */
     buttons_init_gpio();
-
     /* Initialize the buzzer */
-    buzzer_init(50, 2000);
+    buzzer_init(2000);
 }
 
 /*****************************************************************************/
@@ -166,37 +139,11 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* Register the tasks with FreeRTOS*/
-    // create the tasks
-    xTaskCreate
-    (
-        task_button_sw1,                // function used to implement a task
-        "task_button_sw1",              // task name for debugging
-        configMINIMAL_STACK_SIZE,       // stack size (each task has its own stack), so need to tell the OS how much memory to allocate for the stack. This is in words, not bytes, so 1024 means 4096 bytes (4kB)
-        NULL,                           // any parameters that are passed into the task
-        tskIDLE_PRIORITY + 1,           // just higher than IDLE task
-        NULL                            // task handle
-    );
-    xTaskCreate
-    (
-        task_button_sw2, 
-        "task_button_sw2", 
-        configMINIMAL_STACK_SIZE, 
-        NULL, 
-        tskIDLE_PRIORITY + 1, 
-        NULL
-    );
-    xTaskCreate
-    (
-        task_buzzer,
-        "task_buzzer", 
-        configMINIMAL_STACK_SIZE, 
-        NULL, 
-        tskIDLE_PRIORITY + 1, 
-        NULL
-    );
-
+    xTaskCreate(task_button_sw1, "SW1 Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(task_button_sw2, "SW2 Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(task_buzzer, "Buzzer Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
     /* Start the scheduler*/
-    vTaskStartScheduler(); // will start executing these tasks in a round-robin fashion, and will never return from this function
+    vTaskStartScheduler();
 
     /* Will never reach this loop once the scheduler starts */
     while (1)

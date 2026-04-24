@@ -49,13 +49,6 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
-    // initialize the LCD
-    if ((rslt = lcd_initialize()) != CY_RSLT_SUCCESS)
-    {
-        printf("LCD Initialization failed with error: %d\n", rslt);
-        CY_ASSERT(0); // halts the processor (also stops debugger)
-    }
-
 }
 
 /*****************************************************************************/
@@ -67,11 +60,11 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
-    
+    lcd_initialize();
+    lcd_draw_time(11,03);
     while(1)
     {
-        // call the lcd_draw_time function to display the current time on the LCD
-        lcd_draw_time(12, 30);
     }
 }
+
 #endif

@@ -54,7 +54,7 @@
 /*******************************************************************************
 * Global Variables
 *******************************************************************************/
-char NAME[] = "Kewei Yang"; // Replace with your name
+char NAME[] = "Shaw McCoy"; // Replace with your name
 volatile ece353_events_t ECE353_Events;
 
 /*******************************************************************************
@@ -84,9 +84,6 @@ volatile ece353_events_t ECE353_Events;
 int main(void)
 {
     cy_rslt_t result;
-
-    // before any interrupts can be received, software needs to enable the NVIC to receive interrupts, by calling _enable_irq()
-    __enable_irq();
 
     /* Initialize the device and board peripherals */
     result = cybsp_init();

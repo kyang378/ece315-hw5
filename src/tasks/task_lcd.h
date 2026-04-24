@@ -17,15 +17,13 @@
 #include "master_mind_lib.h"
 
 #define TASK_LCD_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
-#define TASK_LCD_PRIORITY      (tskIDLE_PRIORITY + 1)
-
-#if defined(HW02)
-#define TASK_HW02_SYSTEM_LCD_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
-#define TASK_HW02_SYSTEM_LCD_PRIORITY      (tskIDLE_PRIORITY + 2)
-#endif
+#define TASK_LCD_PRIORITY      (tskIDLE_PRIORITY + 1U)
 
 /* FreeRTOS Queue for LCD messages */
-extern QueueHandle_t xQueue_Request_LCD;
+//extern QueueHandle_t xQueue_Request_LCD;
+//extern QueueHandle_t Queue_LCD;
+extern bool darkMode;
+
 
 /* LCD Return Codes */
 typedef enum
@@ -36,17 +34,12 @@ typedef enum
 
 typedef struct
 {
-    lcd_msg_t       msg;
-    QueueHandle_t   return_queue;
+    lcd_msg_t       msg;           // The actual LCD message
+    QueueHandle_t   return_queue;  // Optional
 } lcd_msg_request_t;
 
 /* LCD Task Initialization */
 bool task_lcd_resources_init(QueueHandle_t queue_request);
-
-#if defined(HW02)
-void task_hw02_system_lcd(void *pvParameters);
-bool task_hw02_system_lcd_resources_init(QueueHandle_t queue_request);
-#endif
 
 #endif /* ECE353_FREERTOS */
 #endif /* TASK_LCD_H */

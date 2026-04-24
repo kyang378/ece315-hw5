@@ -41,7 +41,7 @@ extern TaskHandle_t TaskHandle_Console_Rx;
 
 // Global variable for transmitting data
 extern circular_buffer_t *circular_buffer_tx;
-extern QueueHandle_t xQueue_Console_Tx;
+extern QueueHandle_t console_tx_queue;     //CHANGED
 extern TaskHandle_t TaskHandle_Console_Tx;
 
 // Handle for the Console UART

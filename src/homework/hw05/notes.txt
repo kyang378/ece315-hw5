@@ -1,0 +1,27 @@
+I figured this would be a good place to leave comments on what's been handled.
+
+
+What is done/needs doing right now (updated Thursday 3:00 PM)
+- all relevant subsystems should be initialized and will compile
+- Board discovery and player designations are made
+- Players should be able to select their cyphers with the touchscreen, light/dark mode changes accordingly
+- best score is kept, and can be reset
+- TODO right now is go through the state machine piece by piece and implement the required functions
+
+Changes made to your code since Thursday's class:
+- Minor change: "High" was changed to "Best", since the best score will be the lowest number of guesses
+- Minor change: "Last" text was moved to the left, this means we can hopefully squeeze in a little more 
+information if we have to later
+- Select_Cypher UI now correctly switches between light and dark modes
+- Implemented structure for game state machine, left TODO comments inside for just about everything we have left to do
+
+
+
+Other notes
+- When implementing future functions, you will have to check whether update_dark_mode() returns true,
+if it does, you will have to stop, redraw the UI in the correct mode, then continue. See the select_cypher 
+implemetation of this for an example.
+- When implementing cypher guessing screen, I think we should make the guess row some other color instead of red to
+differentiate it from the cypher select screen, otherwise this will be incredibly similar to the cypher select menu.
+
+

@@ -13,40 +13,44 @@
 
  /***************************************************************************/
  /* LEDs                                                                    */
- /***************************************************************************/
- #define PIN_LED_RED P9_0 // Does P9_0 just get translated to the address? how? - yes, because we have P6_3 = CYHAL_GET_GPIO(CYHAL_PORT_6, 3) in pin_packages (in mtb_shared folder)
- #define PIN_LED_BLUE P8_0
- #define PIN_LED_GREEN P9_2
+ /***************************************************************************/\
+ //Green LED
+#define PIN_LED_GREEN P9_2
+#define MASK_LED_GREEN (1 << 2)
+#define PORT_LED_GREEN GPIO_PRT9
 
- #define MASK_LED_RED (1) // is this okay?
- #define MASK_LED_BLUE (1 << 0)
- #define MASK_LED_GREEN (1 << 2) // bit mask bit 2
+//Red LED
+#define PIN_LED_RED P9_0
+#define MASK_LED_RED (1 << 0)
+#define PORT_LED_RED GPIO_PRT9
 
- #define PORT_LED_RED GPIO_PRT9
- #define PORT_LED_BLUE GPIO_PRT8
- #define PORT_LED_GREEN GPIO_PRT9
-
+//Blue LED
+#define PIN_LED_BLUE P8_0
+#define MASK_LED_BLUE (1 << 0)
+#define PORT_LED_BLUE GPIO_PRT8
 /***************************************************************************/
 /* Buttons                                                                 */
 /***************************************************************************/
+//SW1
 #define PIN_BUTTON_SW1 P6_3
-#define PIN_BUTTON_SW2 P6_4
-#define PIN_BUTTON_SW3 P6_5
-
+#define MASK_BUTTON_SW1 (1 << 3)
 #define PORT_BUTTON_SW1 GPIO_PRT6
+
+//SW2
+#define PIN_BUTTON_SW2 P6_4
+#define MASK_BUTTON_SW2 (1 << 4)
 #define PORT_BUTTON_SW2 GPIO_PRT6
+
+//SW3
+#define PIN_BUTTON_SW3 P6_5
+#define MASK_BUTTON_SW3 (1 << 5)
 #define PORT_BUTTON_SW3 GPIO_PRT6
 
-#define MASK_BUTTON_PIN_SW1 (1 << 3) // bit mask bit 3
-#define MASK_BUTTON_PIN_SW2 (1 << 4)
-#define MASK_BUTTON_PIN_SW3 (1 << 5)
 
 /***************************************************************************/
 /* LCD                                                                     */
 /***************************************************************************/
-
-// Pins
-#define PIN_LCD_D0 P2_0 // LCD_DATA0
+#define PIN_LCD_D0 P2_0
 #define PIN_LCD_D1 P2_1
 #define PIN_LCD_D2 P2_2
 #define PIN_LCD_D3 P2_3
@@ -55,28 +59,26 @@
 #define PIN_LCD_D6 P2_6
 #define PIN_LCD_D7 P2_7
 
-#define LCD_CSX P1_0
-#define LCD_DCX P1_1
-#define LCD_WRX P1_2
+#define PIN_LCD_CSX P1_0
+#define PIN_LCD_DCX P1_1
+#define PIN_LCD_WRX P1_2
 
-// Masks to control the pins
-#define MASK_LCD_CSX (1 << 0) // P1.0
-#define MASK_LCD_DCX (1 << 1) // P1.1
-#define MASK_LCD_WRX (1 << 2) // P1.2
+#define MASK_LCD_CSX (1 << 0)
+#define MASK_LCD_DCX (1 << 1)
+#define MASK_LCD_WRX (1 << 2)
 
-// Ports
 #define PORT_LCD_DATA GPIO_PRT2
 #define PORT_LCD_CSX GPIO_PRT1
 #define PORT_LCD_DCX GPIO_PRT1
 #define PORT_LCD_WRX GPIO_PRT1
+
 
 /***************************************************************************/
 /* BUZZER                                                                  */
 /***************************************************************************/
 #define PIN_BUZZER P6_2
 #define PORT_BUZZER GPIO_PRT6
-#define MASK_BUZZER (1<<2)
-
+#define MASK_BUZZER (1 << 2)
 /***************************************************************************/
 /* Joystick                                                                */
 /***************************************************************************/
@@ -86,34 +88,32 @@
 /***************************************************************************/
 /* I2C                                                                     */
 /***************************************************************************/
-
 #define PIN_I2C_SCL P0_2
 #define PIN_I2C_SDA P0_3
-
-/***************************************************************************/
-/* Inter Processor Communication (IPC) UART                                */                                                                          
-/***************************************************************************/
-#define PIN_IPC_TX P3_1
-#define PIN_IPC_RX P3_0
-#define PORT_IPC_UART SCB2
 
 
 /***************************************************************************/
 /* SPI                                                                     */
 /***************************************************************************/
-#define PIN_SPI_MOSI      P7_0
-#define PIN_SPI_MISO      P7_1
-#define PIN_SPI_CLK       P7_2
+#define PIN_SPI_MOSI    P7_0
+#define PIN_SPI_MISO    P7_1
+#define PIN_SPI_SCLK    P7_2 //This pin is referred to by both names
+#define PIN_SPI_CLK     P7_2 //This pin is referred to by both names
+
+#define PIN_IMU_CS      P7_4
+
+#define PIN_EEPROM_CS   P7_3
+/***************************************************************************/
+/* IPC UART                                                                */
+/***************************************************************************/
+#define PIN_IPC_TX      P3_1
+#define PIN_IPC_RX      P3_0
+#define PORT_IPC_UART   SCB2
+
 
 /***************************************************************************/
-/* IMU                                                        */
+/* CAP_TOUCH                                                                */
 /***************************************************************************/
-#define PIN_SPI_IMU_CS    P7_4
-
-/***************************************************************************/
-/* EEPROM                                                    */
-/***************************************************************************/
-#define PIN_EEPROM_CS P7_3
-
+#define PIN_CAP_TOUCH_INT P5_2
 
  #endif

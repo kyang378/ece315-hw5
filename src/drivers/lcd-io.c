@@ -18,27 +18,26 @@
 * Return:
 *  Nothing
 *******************************************************************************/
-__STATIC_INLINE void lcd_write_cmd_u8(uint8_t DL)
-{
-  // step 1: set CSX low to select the LCD
+__STATIC_INLINE void lcd_write_cmd_u8(uint8_t DL) {
+  //Set CSX Pin low to select the LCD
   PORT_LCD_CSX->OUT_CLR = MASK_LCD_CSX;
 
-  // step 2: set DCX low to indicate we're writing a command
+  //Set DCX Low to indicate that we are writing a command
   PORT_LCD_DCX->OUT_CLR = MASK_LCD_DCX;
 
-  // step 3: write data to the data pins (data bus)
+  //wirte data to data pins
   PORT_LCD_DATA->OUT = DL;
 
-  // step 4: toggle WRX low to indicate that we're writing data
+  //Set the WRX pin to Low to indicate that we are writing data
   PORT_LCD_WRX->OUT_CLR = MASK_LCD_WRX;
 
-  // step 5: set WRX high to indicate that we're done writing data
+  //Set WRX pin to high to indicate that we are done writing data
   PORT_LCD_WRX->OUT_SET = MASK_LCD_WRX;
 
-  // step 6: set DCX high to indicate we're done writing the command
+  //Set DCX pin to high to indicate we are done writing a command
   PORT_LCD_DCX->OUT_SET = MASK_LCD_DCX;
 
-  // step 7: set the CSX high to deselect the LCD
+  //Set CSX High to deselect the LCD
   PORT_LCD_CSX->OUT_SET = MASK_LCD_CSX;
 }
 
@@ -49,23 +48,20 @@ __STATIC_INLINE void lcd_write_cmd_u8(uint8_t DL)
 * Return:
 *  Nothing
 *******************************************************************************/
-__STATIC_INLINE void  lcd_write_data_u8 (uint8_t x)
-{
-  // step 1: set CSX low to select the LCD
+__STATIC_INLINE void  lcd_write_data_u8 (uint8_t x) {
+  //Set CSX Low to select the LCD
   PORT_LCD_CSX->OUT_CLR = MASK_LCD_CSX;
 
-  // step 2: DCX remains high to indicate we're writing data
-
-  // step 3: write data to the data pins (data bus)
+  //wirte data to data pins
   PORT_LCD_DATA->OUT = x;
 
-  // step 4: toggle WRX low to indicate that we're writing data
+  //Set WRX Low to indicate write
   PORT_LCD_WRX->OUT_CLR = MASK_LCD_WRX;
 
-  // step 5: set WRX high to indicate that we're done writing data
+  //Set WRX High to complete write
   PORT_LCD_WRX->OUT_SET = MASK_LCD_WRX;
 
-  // step 6: set the CSX high to deselect the LCD
+  //Set CSX High to deselect the LCD
   PORT_LCD_CSX->OUT_SET = MASK_LCD_CSX;
 }
 
@@ -77,36 +73,32 @@ __STATIC_INLINE void  lcd_write_data_u8 (uint8_t x)
 *  Nothing
 *******************************************************************************/
 //write  data word
-__STATIC_INLINE void  lcd_write_data_u16(uint16_t y)
-{
-  // separate the high and low bytes
+__STATIC_INLINE void  lcd_write_data_u16(uint16_t y) {
   uint8_t upper_byte = (y >> 8) & 0xFF;
   uint8_t lower_byte = y & 0xFF;
 
-  // step 1: set CSX low to select the LCD
+  //Set CSX Low to select the LCD
   PORT_LCD_CSX->OUT_CLR = MASK_LCD_CSX;
 
-  // step 2: DCX remains high to indicate we're writing data
-
-  // step 3: write the HIGH byte to the data pins (data bus) first
+  //wirte data to data pins
   PORT_LCD_DATA->OUT = upper_byte;
 
-  // step 4: toggle WRX low to indicate that we're writing data
+  //Set WRX Low to indicate write
   PORT_LCD_WRX->OUT_CLR = MASK_LCD_WRX;
 
-  // step 5: set WRX high to indicate that we're done writing data
+  //Set WRX High to complete write
   PORT_LCD_WRX->OUT_SET = MASK_LCD_WRX;
 
-  // step 6: write the LOW byte to the data pins (data bus)
+  //wirte data to data pins
   PORT_LCD_DATA->OUT = lower_byte;
 
-  // step 7: toggle WRX low to indicate that we're writing data
+  //Set WRX Low to indicate write
   PORT_LCD_WRX->OUT_CLR = MASK_LCD_WRX;
 
-  // step 8: set WRX high to indicate that we're done writing data
+  //Set WRX High to complete write
   PORT_LCD_WRX->OUT_SET = MASK_LCD_WRX;
 
-  // step 9: set the CSX high to deselect the LCD
+  //Set CSX High to deselect the LCD
   PORT_LCD_CSX->OUT_SET = MASK_LCD_CSX;
 }
 
@@ -381,41 +373,41 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x01);
   lcd_write_data_u8(0x79);
 
-  lcd_write_cmd_u8(0xCB);
+   lcd_write_cmd_u8(0xCB);
   lcd_write_data_u8(0x39);
   lcd_write_data_u8(0x2C);
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x34);
   lcd_write_data_u8(0x02);
 
-  lcd_write_cmd_u8(0xF7);
+   lcd_write_cmd_u8(0xF7);
   lcd_write_data_u8(0x20);
 
-  lcd_write_cmd_u8(0xEA);
+   lcd_write_cmd_u8(0xEA);
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x00);
 
-  lcd_write_cmd_u8(LCD_CMD_POWER_CONTROL_2);    //Power control
+   lcd_write_cmd_u8(LCD_CMD_POWER_CONTROL_2);    //Power control
   lcd_write_data_u8(0x11);   //SAP[2:0];BT[3:0]
 
-  lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_1);    //VCM control 1
+   lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_1);    //VCM control 1
   lcd_write_data_u8(0x34);
   lcd_write_data_u8(0x3D);
 
-  lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_2);    //VCM control 2
+   lcd_write_cmd_u8(LCD_CMD_VCOMM_CONTROL_2);    //VCM control 2
   lcd_write_data_u8(0xC0);
 
-  lcd_write_cmd_u8(LCD_CMD_MEMORY_ACCESS_CONTROL);    // Memory Access Control
+   lcd_write_cmd_u8(LCD_CMD_MEMORY_ACCESS_CONTROL);    // Memory Access Control
   lcd_write_data_u8(0x68);
 
-  lcd_write_cmd_u8(LCD_CMD_PIXEL_FORMAT_SET);      // Pixel format
+   lcd_write_cmd_u8(LCD_CMD_PIXEL_FORMAT_SET);      // Pixel format
   lcd_write_data_u8(0x55);  //16bit
 
-  lcd_write_cmd_u8(LCD_CMD_FRAME_CONTROL_NORMAL_MODE);        // Frame rate
+   lcd_write_cmd_u8(LCD_CMD_FRAME_CONTROL_NORMAL_MODE);        // Frame rate
   lcd_write_data_u8(0x00);
   lcd_write_data_u8(0x1D);  //61Hz
 
-  lcd_write_cmd_u8(0xB6);    // Display Function Control
+   lcd_write_cmd_u8(0xB6);    // Display Function Control
   lcd_write_data_u8(0x0A);
   lcd_write_data_u8(0xA2);
   lcd_write_data_u8(0x27);
@@ -425,10 +417,10 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x07);
 
 
-  lcd_write_cmd_u8(LCD_CMD_DISPLAY_FUNCTION_CONTROL);    // 3Gamma Function Disable
+   lcd_write_cmd_u8(LCD_CMD_DISPLAY_FUNCTION_CONTROL);    // 3Gamma Function Disable
   lcd_write_data_u8(0x08);
 
-  lcd_write_cmd_u8(LCD_CMD_GAMMA_SET);    //Gamma curve selected
+   lcd_write_cmd_u8(LCD_CMD_GAMMA_SET);    //Gamma curve selected
   lcd_write_data_u8(0x01);
 
 
@@ -466,10 +458,10 @@ void lcd_config_screen(void)
   lcd_write_data_u8(0x3a);
   lcd_write_data_u8(0x1f);
 
-  lcd_write_cmd_u8(LCD_CMD_SLEEP_OUT);    //Exit Sleep
-  Cy_SysLib_Delay(120);
-  lcd_write_cmd_u8(LCD_CMD_DISPLAY_ON);    //Display on
-  Cy_SysLib_Delay(50);
+   lcd_write_cmd_u8(LCD_CMD_SLEEP_OUT);    //Exit Sleep
+   Cy_SysLib_Delay(120);
+   lcd_write_cmd_u8(LCD_CMD_DISPLAY_ON);    //Display on
+   Cy_SysLib_Delay(50);
 
 }
 
@@ -488,19 +480,31 @@ cy_rslt_t lcd_config_gpio(void)
 {
   cy_rslt_t rslt = CY_RSLT_SUCCESS;
 
-  /* Configure the GPIO pins for the LCD to be inactive (1), return error code if failed */
-  if (rslt = cyhal_gpio_init(PIN_LCD_D0, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D1, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D2, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D3, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D4, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D5, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(PIN_LCD_D7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  
-  if (rslt = cyhal_gpio_init(LCD_CSX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(LCD_DCX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
-  if (rslt = cyhal_gpio_init(LCD_WRX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1) != CY_RSLT_SUCCESS) return rslt;
+  //Configure GPIO pins for LCD
+  rslt = cyhal_gpio_init(PIN_LCD_D0, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D1, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D2, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D3, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D4, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D5, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_D7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+
+  //Configure LCD control pins
+  rslt = cyhal_gpio_init(PIN_LCD_CSX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_DCX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
+  rslt = cyhal_gpio_init(PIN_LCD_WRX, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+  if (rslt != CY_RSLT_SUCCESS) return rslt;
 
   return rslt;
 }
@@ -508,8 +512,7 @@ cy_rslt_t lcd_config_gpio(void)
 /*******************************************************************************
 * Function Name:lcd_initialize
 ********************************************************************************
-* Summary: Configures the LCD screen and displays a default image              
-* 
+* Summary: Configures the LCD screen and displays a default image              *
 * Parameters
 *
 * Return:
@@ -519,12 +522,12 @@ cy_rslt_t lcd_initialize(void)
 {
   cy_rslt_t result;
 
-  result = lcd_config_gpio(); // congigure the GPIO pins
+  result = lcd_config_gpio();
 
   if(result == CY_RSLT_SUCCESS)
   {
     lcd_config_screen();
-	  lcd_clear_screen(LCD_COLOR_BLACK); // clears the screen and sets to black
+	  lcd_clear_screen(LCD_COLOR_BLACK);
   }
   else
   {

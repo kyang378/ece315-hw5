@@ -1,6 +1,6 @@
 /**
  * @file ex01.c
- * @author your name (you@domain.com)
+ * @author Shaw McCoy (sjmccoy@wisc.edu)
  * @brief 
  * @version 0.1
  * @date 2025-06-30
@@ -18,8 +18,7 @@ char APP_DESCRIPTION[] = "ECE353: Example 01 - Intro to C";
 /*****************************************************************************/
 /* Macros                                                                    */
 /*****************************************************************************/
-//#define REG_OUT_LED_GREEN (*(volatile uint32_t *)0x40310480) // Address for the GPIO_PRT_9_OUT register that the green LED lives on. Other LEDs also live in this register.
-
+#define REG_OUT_LED_GREEN (*(volatile uint32_t *)0x40310480)
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
@@ -39,7 +38,9 @@ char APP_DESCRIPTION[] = "ECE353: Example 01 - Intro to C";
  */
 void app_init_hw(void)
 {
-    cy_rslt_t rslt; // return code to see if functions are successful
+
+    cy_rslt_t result;
+
     console_init();
     
     printf("\x1b[2J\x1b[;H");
@@ -50,16 +51,16 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
-    /* Initialize P9.2 as an output*/
-    printf("Initializing User LED (P9.2)\n\r");
-    rslt = cyhal_gpio_init(PIN_LED_GREEN, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 0);
-    if (rslt != CY_RSLT_SUCCESS) // ex. if we already initialized the pin
-    {
-        printf("Error initializing P9.2\n\r");
-        CY_ASSERT(0); // stops the application
+    printf("Initializing User LED...\n\r");
+    //Initialize P9.2 as output
+    result = cyhal_gpio_init(PIN_LED_GREEN, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 0);
+    if (result != CY_RSLT_SUCCESS) {
+        printf("Failed to initialize user LED\n\r");
+        CY_ASSERT(0);
     }
 
     printf("Starting main application...\n\r");
+
 }
 
 /*****************************************************************************/
@@ -72,21 +73,16 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* Enter Infinite Loop*/
-    while (1)
-    {
-        /* Turn GREEN LED ON */
+    while (1) {
+        //Turn on Green LED
         //cyhal_gpio_write(PIN_LED_GREEN, 1);
-        REG_OUT_LED_GREEN |= MASK_LED_GREEN; // set the bit for P9.2 to turn on LED
-
-        /* Delay for 500ms */
+        REG_OUT_LED_GREEN |= MASK_LED_GREEN;
         cyhal_system_delay_ms(500);
-
-        /* Turn GREEN LED OFF */
+        //Turn off Green LED
         //cyhal_gpio_write(PIN_LED_GREEN, 0);
-        REG_OUT_LED_GREEN &= ~MASK_LED_GREEN; // clear the bit for P9.2 to turn off LED
-
-        /* Delay for 500ms */
+        REG_OUT_LED_GREEN &= ~MASK_LED_GREEN;
         cyhal_system_delay_ms(500);
+        
     }
 }
 #endif

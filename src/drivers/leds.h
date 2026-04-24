@@ -15,36 +15,33 @@
 #include "cybsp.h"
 #include "cyhal_gpio.h"
 #include "ece353-pins.h"
-#include "ece353-events.h"
 #include "cyhal_pwm.h"
 
 typedef enum {
-    LED_RED,
-    LED_GREEN,
-    LED_BLUE
+    LED_GREEN = 0,
+    LED_RED = 1,
+    LED_BLUE = 2,
 } ece353_led_t;
 
 typedef enum {
-    LED_STATE_OFF,
-    LED_STATE_ON
+    LED_STATE_OFF = 0,
+    LED_STATE_ON = 1,
 } ece353_led_state_t;
 
 // Function to initialize the LEDs
+void leds_init(void);
 cy_rslt_t leds_init_gpio(void);
 
 // Function to set the state of a specific LED
 void leds_set_state(ece353_led_t led, ece353_led_state_t state);
 
-// Function to initialize the IO pins for red, green and blue LEDs to be controlled by
-// a PWM peripheral
+// Function that configures the RGB LED pins to be controlled by PWM
 cy_rslt_t leds_init_pwm(
-    cyhal_pwm_t* pwm_obj_red,
-    cyhal_pwm_t* pwm_obj_green,
-    cyhal_pwm_t* pwm_obj_blue
+cyhal_pwm_t *pwm_obj_red, 
+cyhal_pwm_t *pwm_obj_green, 
+cyhal_pwm_t *pwm_obj_blue
 );
 
-// function to increment the intensity of an LED by 10% each time the corresponding button is
-// pressed, thorugh PWM peripheral. if the intensity would > 100%, reset the intensity to 0%
-cy_rslt_t leds_set_frequency_pwm (cyhal_pwm_t* pwm_obj_red, cyhal_pwm_t *pwm_obj_green, cyhal_pwm_t *pwm_obj_blue);
+
 
 #endif

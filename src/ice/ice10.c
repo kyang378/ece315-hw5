@@ -25,8 +25,7 @@ char APP_DESCRIPTION[] = "ECE353: ICE 10 - FreeRTOS UART Tx IRQs";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
-EventGroupHandle_t ECE353_RTOS_Events;
-
+EventGroupHandle_t ECE353_RTOS_Events = NULL;
 /*****************************************************************************/
 /* Function Declarations                                                     */
 /*****************************************************************************/
@@ -76,7 +75,7 @@ void app_main(void)
 
     if(!task_button_init())
     {
-        printf("Buttons initialization failed!\n\r");
+        printf("Button initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);
         CY_ASSERT(0);
     }

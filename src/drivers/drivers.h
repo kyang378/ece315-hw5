@@ -25,6 +25,6 @@
  #include "lcd-io.h"
  #include "lcd-fonts.h"
  #include "timer.h"
- #include "ece353-pins.h"
+ #include "leds.h"
 
  #endif

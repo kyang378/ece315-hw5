@@ -52,19 +52,22 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
 
-    if (rslt = buttons_init_gpio() != CY_RSLT_SUCCESS) { // initialize buttons GPIO as inputs
-        printf("Error initializing buttons\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a whilel
+    // Initialize Buttons
+    rslt = buttons_init_gpio();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("Error Initializing Buttons GPIO: %lu\n\r", rslt);
+        for(int i = 0; i < 1000000; i++); // Delay
         CY_ASSERT(0);
     }
 
-    // initialize the timer for button debouncing
-    if (rslt = buttons_init_timer() != CY_RSLT_SUCCESS) 
-    {
-        printf("Error initializing button timer\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a whilel
+    //Initialize timer for debouncing
+    rslt = buttons_init_timer();
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("Error Initializing Buttons Timer: %lu\n\r", rslt);
+        for(int i = 0; i < 1000000; i++); // Delay
         CY_ASSERT(0);
     }
+
 }
 
 /*****************************************************************************/
@@ -74,22 +77,20 @@ void app_init_hw(void)
  * @brief
  * This function implements the behavioral requirements for the ICE
  */
-void app_main(void)
-{
-    while (1)
-    {
-        /* check ECE353_Events for button presses */
-        if (ECE353_Events.sw1 == 1) {
-            ECE353_Events.sw1 = 0; // clear the event
-            printf("SW1 pressed\n\r");
+void app_main(void) {
+    while (1) {
+        // Check for button presses
+        if (ECE353_Events.sw1) {
+            ECE353_Events.sw1 = 0; // Clear event
+            printf("SW1 Pressed\n\r");
         }
-        if (ECE353_Events.sw2 == 1) {
-            ECE353_Events.sw2 = 0;
-            printf("SW2 pressed\n\r");
+        if (ECE353_Events.sw2) {
+            ECE353_Events.sw2 = 0; // Clear event
+            printf("SW2 Pressed\n\r");
         }
-        if (ECE353_Events.sw3 == 1) {
-            ECE353_Events.sw3 = 0;
-            printf("SW3 pressed\n\r");
+        if (ECE353_Events.sw3) {
+            ECE353_Events.sw3 = 0; // Clear event
+            printf("SW3 Pressed\n\r");
         }
     }
 }

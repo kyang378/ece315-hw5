@@ -10,58 +10,48 @@
  */
 
  #include "task_lcd.h"
+ #include "lcd-io.h"
+ #include "master_mind_lib.h"
 
 #if defined(ECE353_FREERTOS)
 
 /* FreeRTOS Queue for LCD messages */
 static QueueHandle_t Queue_Requests = NULL;
 
-#if defined(HW02)
-static QueueHandle_t Queue_Requests_HW02 = NULL;
-#endif
-
 /* LCD Task */
 void task_lcd(void *pvParameters)
 {
     (void)pvParameters; // Unused parameter
 
-    lcd_msg_request_t lcd_request; // buffer where the received item will be copied into
+    lcd_msg_t msg;
     lcd_msg_response_t response;
     bool status = false;
 
     while(1)
     {
-        xQueueReceive(Queue_Requests, &lcd_request, portMAX_DELAY);
-        printf("LCD recv cmd=%d msg=%s\n\r",
-            lcd_request.msg.command,
-            lcd_request.msg.payload.message);
+        xQueueReceive(Queue_Requests, &msg, portMAX_DELAY);
 
-        switch (lcd_request.msg.command) {
+        switch (msg.command) {
             case LCD_CMD_CLEAR_SCREEN:
-            {
-                /* Clear the screen */
-                // we have already wrote the function for parsing the message and doing the command
-                master_mind_handle_msg(&lcd_request.msg);
+                if (darkMode) {
+                    lcd_clear_screen(LCD_COLOR_BLACK);
+                } else {
+                    lcd_clear_screen(LCD_COLOR_WHITE);
+                }
                 break;
-            }
+            case LCD_CMD_CLEAR_SCREEN_WHITE:
+                lcd_clear_screen(LCD_COLOR_WHITE);
+                break;
             case LCD_CMD_PRINT_SW1_COUNT:
-            {
-                /* Print out the number of times SW1 has been pressed onto the LCD starting at (10,50). Handled by the master_mind_handle_msg function */
-                master_mind_handle_msg(&lcd_request.msg);
+                lcd_print_message(&msg, 10, 50);
                 break;
-            }
             case LCD_CMD_PRINT_SW2_COUNT:
-            {
-                /* Print out the number of times SW2 has been pressed onto the LCD starting at (10,100). Handled by the master_mind_handle_msg function */
-                master_mind_handle_msg(&lcd_request.msg);
+                lcd_print_message(&msg, 10, 100);
                 break;
-            }
+
             default:
-            {
-                /* Invalid command */
                 status = false;
-            }
-            break;
+                break;
         }
     }
 }
@@ -94,65 +84,4 @@ bool task_lcd_resources_init(QueueHandle_t queue_request){
 
     return true;
 }
-
-#if defined(HW02)
-void task_hw02_system_lcd(void *pvParameters)
-{
-    (void)pvParameters; // Unused parameter
-
-    lcd_msg_request_t lcd_request;
-    lcd_msg_response_t response;
-    bool status;
-
-    if (Queue_Requests_HW02 == NULL)
-    {
-        CY_ASSERT(0);
-    }
-
-    while(1)
-    {
-        if (xQueueReceive(Queue_Requests_HW02, &lcd_request, portMAX_DELAY) != pdPASS)
-        {
-            continue;
-        }
-
-        /* For HW02, system control never touches the LCD directly.
-           Instead it sends a lcd_msg_request_t here, and this gatekeeper task
-           is the one that actually calls master_mind_handle_msg(). */
-        status = master_mind_handle_msg(&lcd_request.msg);
-        response = status ? LCD_MSG_RESPONSE_SUCCESS : LCD_MSG_RESPONSE_ERROR;
-
-        if (lcd_request.return_queue != NULL)
-        {
-            // send back the status of the operation
-            xQueueSend(lcd_request.return_queue, &response, 0);
-        }
-    }
-}
-
-bool task_hw02_system_lcd_resources_init(QueueHandle_t queue_request)
-{
-    BaseType_t result;
-
-    /* Same idea as the HW02 joystick task: hw02.c owns the queue creation,
-       while this init function just stores the queue handle and creates the task. */
-    if (queue_request == NULL)
-    {
-        return false;
-    }
-
-    Queue_Requests_HW02 = queue_request;
-
-    result = xTaskCreate(
-        task_hw02_system_lcd,
-        "task_hw02_system_lcd",
-        TASK_HW02_SYSTEM_LCD_STACK_SIZE,
-        NULL,
-        TASK_HW02_SYSTEM_LCD_PRIORITY,
-        NULL
-    );
-
-    return result == pdPASS;
-}
-#endif
 #endif

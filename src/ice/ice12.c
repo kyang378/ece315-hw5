@@ -156,7 +156,7 @@ void app_init_hw(void)
     printf("**************************************************\n\r");
 
     /* Initialize the SPI interface */
-    SPI_Obj = spi_init(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_CLK) ;
+    SPI_Obj = spi_init(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCLK) ;
     if(SPI_Obj == NULL)
     {
         printf("SPI initialization failed!\n\r");

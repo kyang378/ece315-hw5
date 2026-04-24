@@ -11,6 +11,7 @@
 #include "eeprom.h"
 #include "cyhal_hw_types.h"
 #include <sys/types.h>
+#include "task_console.h"
 
 
 /** Determine if the EEPROM is busy writing the last
@@ -19,21 +20,36 @@
  * @param
  *
  */
-void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
+
+ void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
 {
-	uint8_t status[2];
-	uint8_t cmd_msg[2] = {EEPROM_CMD_RDSR, 0xFF}; // 0xFF for don't-care for us to get the status (1 byte) back from the EEPROM
-	do {
-		// Pull CS low to select the EEPROM
-		cyhal_gpio_write(cs_pin, 0);
+	uint8_t tx_buf[2];
+    uint8_t rx_buf[2];
 
-		// Send the RDSR command and read the status register
-		cyhal_spi_transfer(spi_obj, cmd_msg, 2, status, 2, 0xFF);
+    tx_buf[0] = 0x05;   // RDSR instruction
+    tx_buf[1] = 0x00;   // Dummy byte to clock out status register
 
-		// Pull CS high to deselect the EEPROM
-		cyhal_gpio_write(cs_pin, 1);
-	} while (status[1] & 0x01); // Stay here while the WIP bit is set; first byte is don't-care, second byte contains the status
-}
+    do
+    {
+        // Assert chip select (active low)
+        cyhal_gpio_write(cs_pin, false);
+
+        cyhal_spi_transfer(
+            spi_obj,
+            tx_buf, sizeof(tx_buf),   // TX buffer + length
+            rx_buf, sizeof(rx_buf),   // RX buffer + length
+            0                         // No timeout
+        );
+
+        // Deassert chip select
+        cyhal_gpio_write(cs_pin, true);
+
+        // Loop until WIP bit (bit 0) becomes 0
+    } while (rx_buf[1] & 0x01);
+
+} 
+
+
 
 /** Enables Writes to the EEPROM
  *
@@ -42,15 +58,22 @@ void eeprom_wait_for_write(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
  */
 void eeprom_write_enable(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
 {
-	// Pull CS low to select the EEPROM
-	cyhal_gpio_write(cs_pin, 0);
+	uint8_t tx_buf[1] = {0x06};  // WREN instruction
+    uint8_t rx_buf[1];           // Dummy receive buffer
 
-	// Send the WREN command
-	uint8_t cmd = EEPROM_CMD_WREN;
-	cyhal_spi_transfer(spi_obj, &cmd, 1, NULL, 0, 0xFF); // data returned is not useful
+    // Assert chip select (active low)
+    cyhal_gpio_write(cs_pin, false);
 
-	// Pull CS high to deselect the EEPROM
-	cyhal_gpio_write(cs_pin, 1);
+    cyhal_spi_transfer(
+        spi_obj,
+        tx_buf, sizeof(tx_buf),   // TX buffer + length
+        rx_buf, sizeof(rx_buf),   // RX buffer + length
+        0                         // No timeout
+    );
+
+    // Deassert chip select
+    cyhal_gpio_write(cs_pin, true);
+
 }
 
 /** Disable Writes to the EEPROM
@@ -60,15 +83,22 @@ void eeprom_write_enable(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
  */
 void eeprom_write_disable(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
 {
-	// Pull CS low to select the EEPROM
-	cyhal_gpio_write(cs_pin, 0);
+	uint8_t tx_buf[1] = {0x04};  // WRDI instruction
+    uint8_t rx_buf[1];           // Dummy receive buffer
 
-	// Send the WRDI command
-	uint8_t cmd = EEPROM_CMD_WRDI;
-	cyhal_spi_transfer(spi_obj, &cmd, 1, NULL, 0, 0xFF); // data returned is not useful
+    // Assert chip select (active low)
+    cyhal_gpio_write(cs_pin, false);
 
-	// Pull CS high to deselect the EEPROM
-	cyhal_gpio_write(cs_pin, 1);
+    cyhal_spi_transfer(
+        spi_obj,
+        tx_buf, sizeof(tx_buf),   // TX buffer + length
+        rx_buf, sizeof(rx_buf),   // RX buffer + length
+        0                         // No timeout
+    );
+
+    // Deassert chip select
+    cyhal_gpio_write(cs_pin, true);
+
 }
 
 /** Writes a single byte to the specified address
@@ -79,28 +109,34 @@ void eeprom_write_disable(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
  */
 void eeprom_write_byte(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin, uint16_t address, uint8_t data)
 {
-	// first make sure that the EEPROM is not busy with a previous write operation
-	eeprom_wait_for_write(spi_obj, cs_pin);
+	//Enable writes
+    eeprom_write_enable(spi_obj, cs_pin);
 
-	// enable writes to the EEPROM
-	eeprom_write_enable(spi_obj, cs_pin);
+    //Build transmit buffer for WRITE instruction
+    uint8_t tx_buf[4];
+    uint8_t rx_buf[4];
 
-	// Pull CS low to select the EEPROM
-	cyhal_gpio_write(cs_pin, 0);
+    tx_buf[0] = 0x02;                 // WRITE instruction
+    tx_buf[1] = (address >> 8) & 0xFF; // Address high byte
+    tx_buf[2] = address & 0xFF;        // Address low byte
+    tx_buf[3] = data;                  // Data byte
 
-	// Send the WRITE command
-	uint8_t cmd = EEPROM_CMD_WRITE;
-	cyhal_spi_transfer(spi_obj, &cmd, 1, NULL, 0, 0xFF); // data returned is not useful (actually all just high impedence)
+    //Assert chip select
+    cyhal_gpio_write(cs_pin, false);
 
-	// Send the address
-	uint8_t addr_bytes[2] = { (uint8_t)(address >> 8), (uint8_t)(address & 0xFF) };
-	cyhal_spi_transfer(spi_obj, addr_bytes, 2, NULL, 0, 0xFF);
+    cyhal_spi_transfer(
+        spi_obj,
+        tx_buf, sizeof(tx_buf),   // TX buffer + length
+        rx_buf, sizeof(rx_buf),   // RX buffer + length
+        0                         // No timeout
+    );
 
-	// Send the data
-	cyhal_spi_transfer(spi_obj, &data, 1, NULL, 0, 0xFF);
+    //Deassert chip select
+    cyhal_gpio_write(cs_pin, true);
 
-	// Pull CS high to deselect the EEPROM
-	cyhal_gpio_write(cs_pin, 1);
+    //Wait for write cycle to complete
+    eeprom_wait_for_write(spi_obj, cs_pin);
+
 }
 
 /** Reads a single byte to the specified address
@@ -110,27 +146,29 @@ void eeprom_write_byte(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin, uint16_t addre
  */
 uint8_t eeprom_read_byte(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin, uint16_t address)
 {
-	// first make sure that the EEPROM is not busy with a previous write operation
-	eeprom_wait_for_write(spi_obj, cs_pin);
+	uint8_t tx_buf[4];
+    uint8_t rx_buf[4];
 
-	// Pull CS low to select the EEPROM
-	cyhal_gpio_write(cs_pin, 0);
+    // Build transmit buffer
+    tx_buf[0] = 0x03;                 // READ instruction
+    tx_buf[1] = (address >> 8) & 0xFF; // Address high byte
+    tx_buf[2] = address & 0xFF;        // Address low byte
+    tx_buf[3] = 0x00;                  // Dummy byte to clock out data
 
-	// Send the READ command
-	uint8_t cmd = EEPROM_CMD_READ;
-	cyhal_spi_transfer(spi_obj, &cmd, 1, NULL, 0, 0xFF); // data returned is not useful
+    // Assert chip select
+    cyhal_gpio_write(cs_pin, false);
 
-	// Send the address
-	uint8_t addr_bytes[2] = { (uint8_t)(address >> 8), (uint8_t)(address & 0xFF) };
-	cyhal_spi_transfer(spi_obj, addr_bytes, 2, NULL, 0, 0xFF); // data returned is not useful
+    cyhal_spi_transfer(
+        spi_obj,
+        tx_buf, sizeof(tx_buf),   // TX buffer + length
+        rx_buf, sizeof(rx_buf),   // RX buffer + length
+        0                         // No timeout
+    );
 
-	// Read the data by sending a dummy byte (0xFF)
-	uint8_t dont_care = 0xFF;
-	uint8_t data;
-	cyhal_spi_transfer(spi_obj, &dont_care, 1, &data, 1, 0xFF);
+    // Deassert chip select
+    cyhal_gpio_write(cs_pin, true);
 
-	// Pull CS high to deselect the EEPROM
-	cyhal_gpio_write(cs_pin, 1);
+    // The data byte is in rx_buf[3]
+    return rx_buf[3];
 
-	return data;
 }

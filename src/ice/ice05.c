@@ -9,6 +9,9 @@
  * 
  */
 #include "main.h"
+#include "rtos_events.h"
+#include "task_buttons.h"
+#include "task_buzzer.h"
 
 #if defined(ICE05)
 #include "drivers.h"
@@ -19,11 +22,6 @@ char APP_DESCRIPTION[] = "ECE353: ICE 05 - FreeRTOS Event Groups";
 /* Macros                                                                    */
 /*****************************************************************************/
 // ADD CODE for Event Group Bit Definitions
-#include "rtos_events.h"
-
-// include the header files for the tasks we will create
-#include "task_buttons.h"
-#include "task_buzzer.h"
 
 /*****************************************************************************/
 /* Global Variables                                                          */
@@ -46,7 +44,7 @@ EventGroupHandle_t ECE353_RTOS_Events;
  */
 void app_init_hw(void)
 {
-    cy_rslt_t rslt;
+    //cy_rslt_t rslt;
 
     console_init();
     printf("**************************************************\n\r");
@@ -57,10 +55,10 @@ void app_init_hw(void)
     printf("**************************************************\n\r");
 
     /* ADD CODE Initialize the buttons */
-    buttons_init_gpio();
+    buttons_init();
 
     /* ADD CODE Initialize the buzzer */
-    buzzer_init(50, 2000);
+    buzzer_init(2000);
 }
 
 /*****************************************************************************/
@@ -73,33 +71,20 @@ void app_init_hw(void)
 void app_main(void)
 {
     /* ADD CODE Create the event group */
-    ECE353_RTOS_Events = xEventGroupCreate();
-    if (ECE353_RTOS_Events == NULL) {
-        // handle error
-        printf("Failed to create event group\n\r");
+        ECE353_RTOS_Events = xEventGroupCreate();
+        if (ECE353_RTOS_Events == NULL) {
+            printf("Failed to create event group\n\r");
+            while (1); // Loop forever if event group creation fails
+        }
+
+    /* ADD CODE Register the tasks with FreeRTOS*/ 
+    if (!task_button_init()) {
+        printf("Failed to create button task\n\r");
+        while (1); // Loop forever if task creation fails
     }
-
-    /* ADD CODE Register the tasks with FreeRTOS*/
-    BaseType_t rslt = xTaskCreate(task_buttons, 
-                                "Buttons Task", 
-                                configMINIMAL_STACK_SIZE, 
-                                NULL, 
-                                tskIDLE_PRIORITY + 1, 
-                                NULL);
-
-    if (rslt != pdPASS) {
-        printf("Failed to create buttons task\n\r");
-    }
-
-    rslt = xTaskCreate(task_buzzer, 
-                    "Buzzer Task", 
-                    configMINIMAL_STACK_SIZE, 
-                    NULL, 
-                    tskIDLE_PRIORITY + 1, 
-                    NULL);
-
-    if (rslt != pdPASS) {
+    if (!task_buzzer_init()) {
         printf("Failed to create buzzer task\n\r");
+        while (1); // Loop forever if task creation fails
     }
 
     /* ADD CODE Start the scheduler*/

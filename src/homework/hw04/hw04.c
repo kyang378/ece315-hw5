@@ -19,8 +19,10 @@ char APP_DESCRIPTION[] = "ECE353 S26 HW04";
 /*****************************************************************************/
 cyhal_i2c_t *I2C_Monarch_Obj;
 cyhal_spi_t *SPI_Monarch_Obj;
-static SemaphoreHandle_t HW04_I2C_Semaphore = NULL;
-static SemaphoreHandle_t HW04_SPI_Semaphore = NULL;
+
+SemaphoreHandle_t SPI_Semaphore;
+SemaphoreHandle_t I2C_Semaphore;
+
 
 /*****************************************************************************/
 /* Function Definitions                                                      */
@@ -35,21 +37,16 @@ static SemaphoreHandle_t HW04_SPI_Semaphore = NULL;
  * for each bus and give the semaphore once after creating it to ensure that 
  * it is available for use.
  */
-static void hw04_semaphores_init(void)
-{
-    HW04_I2C_Semaphore = xSemaphoreCreateBinary();
-    HW04_SPI_Semaphore = xSemaphoreCreateBinary();
+static void hw04_semaphores_init(void) {
+    // Create binary semaphores
+    SPI_Semaphore = xSemaphoreCreateBinary();
+    I2C_Semaphore = xSemaphoreCreateBinary();
 
-    if(HW04_I2C_Semaphore == NULL || HW04_SPI_Semaphore == NULL)
-    {
-        task_console_printf("Failed to create hw04 semaphores!\n\r");
-        for(int i = 0; i < 100000; i++) {}
-        CY_ASSERT(0);
-    }
+    // Ensure they start available
+    xSemaphoreGive(SPI_Semaphore);
+    xSemaphoreGive(I2C_Semaphore);
+}
 
-    xSemaphoreGive(HW04_I2C_Semaphore);
-    xSemaphoreGive(HW04_SPI_Semaphore);
-}   
 
 /* If you are going to create any queues outside of the tasks 
 *  create them in this function.  You will also need to allocate the queues
@@ -60,12 +57,12 @@ static void hw04_semaphores_init(void)
 */
 static void hw04_queues_init(void)
 {
+    /* ADD CODE */
+    // Create the Cap Touch request queue
     Queue_Request_Cap_Touch = xQueueCreate(1, sizeof(device_request_msg_t));
-
     if (Queue_Request_Cap_Touch == NULL)
     {
-        task_console_printf("Failed to create Cap Touch request queue!\n\r");
-        for(int i = 0; i < 100000; i++) {}
+        printf("Failed to create Cap Touch Request Queue\n\r");
         CY_ASSERT(0);
     }
 }   
@@ -77,22 +74,25 @@ static void hw04_queues_init(void)
  ************************************************/
 void app_init_hw(void)
 {
+    cy_rslt_t rslt;
+
     console_init();
     // Set text color to black
-    task_console_printf("\x1b[30m");
-    task_console_printf("\x1b[2J\x1b[;H");
-    task_console_printf("**************************************************\n\r");
-    task_console_printf("* %s\n\r", APP_DESCRIPTION);
-    task_console_printf("* Date: %s\n\r", __DATE__);
-    task_console_printf("* Time: %s\n\r", __TIME__);
-    task_console_printf("* Name:%s\n\r", NAME);
-    task_console_printf("**************************************************\n\r");
+    //printf("\x1b[30m"); //commented out since console has a black background
+    printf("\x1b[37m"); //makes text white for ease of reading
+    printf("\x1b[2J\x1b[;H");
+    printf("**************************************************\n\r");
+    printf("* %s\n\r", APP_DESCRIPTION);
+    printf("* Date: %s\n\r", __DATE__);
+    printf("* Time: %s\n\r", __TIME__);
+    printf("* Name:%s\n\r", NAME);
+    printf("**************************************************\n\r");
 
     /* Initialize the I2C interface */
     I2C_Monarch_Obj = i2c_init(PIN_I2C_SDA, PIN_I2C_SCL);
     if( I2C_Monarch_Obj == NULL)
     {
-        task_console_printf("I2C Initialization Failed!\n\r");
+        printf("I2C Initialization Failed!\n\r");
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
@@ -101,13 +101,17 @@ void app_init_hw(void)
     SPI_Monarch_Obj = spi_init(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_CLK);
     if( SPI_Monarch_Obj == NULL)
     {
-        task_console_printf("SPI Initialization Failed!\n\r");
+        printf("SPI Initialization Failed!\n\r");
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
 
-    /* Initialize the CS pin for the EEPROM */
-    cyhal_gpio_init(PIN_SPI_EEPROM_CS, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, 1);
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    //initialize CS pin, REMEMBER TO DO THIS IN THE FUTURE
+    cyhal_gpio_init(PIN_EEPROM_CS, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, true);
+
 
 }
 
@@ -131,32 +135,41 @@ void app_main(void)
     rslt = task_console_init();
     if (!rslt)
     {
-        task_console_printf("Console Task resource initialization failed!\n\r");
+        printf("Console Task resource initialization failed!\n\r");
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
 
     /* Start any other tasks required to complete this homework */
-    rslt = task_eeprom_resources_init(&HW04_SPI_Semaphore, SPI_Monarch_Obj, PIN_SPI_EEPROM_CS);
+    rslt = task_eeprom_resources_init(
+        &SPI_Semaphore,
+        SPI_Monarch_Obj,
+        PIN_EEPROM_CS
+    );
+
     if (!rslt)
     {
-        task_console_printf("EEPROM Task resource initialization failed!\n\r");
+        printf("EEPROM Task initialization failed!\n\r");
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
 
+
     rslt = task_cap_touch_resources_init(
         Queue_Request_Cap_Touch,
-        HW04_I2C_Semaphore,
+        I2C_Semaphore,
         I2C_Monarch_Obj,
-        NC
+        PIN_CAP_TOUCH_INT
     );
+
     if (!rslt)
     {
-        task_console_printf("Cap Touch Task resource initialization failed!\n\r");
+        printf("Cap Touch Task initialization failed!\n\r");
         for(int i = 0; i < 100000; i++) {}
         CY_ASSERT(0);
     }
+
+
 
 
     /* Start the scheduler*/

@@ -33,18 +33,20 @@ void task_ipc_tx(void *param)
 {
     ipc_packet_t packet;
 
-    (void)param;
-
     while(1)
     {
+        /* ADD CODE */
+
         /* Receive the IPC packet from the queue */
-        if(xQueueReceive(Queue_IPC_Tx, &packet, portMAX_DELAY) == pdPASS)
+        xQueueReceive(Queue_IPC_Tx, &packet, portMAX_DELAY);
+        /* Transmit the IPC packet 1-byte at a time */
+        uint8_t *raw = (uint8_t *)&packet; //converts the packet to raw byte-for-byte data
+        size_t len = sizeof(ipc_packet_t);
+
+        for(size_t i = 0; i < len; i++)
         {
-            /* Transmit the packet 1 byte at a time in a polling manner */
-            for(int i = 0; i < sizeof(ipc_packet_t); i++)
-            {
-                cyhal_uart_putc(&IPC_Uart_Obj, ((uint8_t*)&packet)[i]);
-            }
+            /* Polling transmit */
+            cyhal_uart_putc(&IPC_Uart_Obj, raw[i]);
         }
     }
 }

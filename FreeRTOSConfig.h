@@ -54,7 +54,6 @@
 #include "cycfg_system.h"
 
 
-
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 extern uint32_t SystemCoreClock;
@@ -78,7 +77,7 @@ extern uint32_t SystemCoreClock;
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   (64*1024) /*64k*/
+#define configTOTAL_HEAP_SIZE                   (64*1024) //64k
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */

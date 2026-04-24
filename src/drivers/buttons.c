@@ -10,176 +10,123 @@
  */
 
  #include "buttons.h"
+ #include "cyhal_timer.h"
+ #include "ece353-events.h"
+ #include "ece353-pins.h"
 
-/*****************************************************************************/
-/* Macros                                                                    */
-/*****************************************************************************/
+ // Static storage for previous button state (initialized to HIGH)
+ static uint8_t prev_logic_level[3] = {1,1,1};
 
-/*****************************************************************************/
-/* Functions                                                                    */
-/*****************************************************************************/
+ // Static storage for timer and GPIO objects
+ static cyhal_gpio_t button_pins[3];
 
- int previous_state_SW1 = 1, previous_state_SW2 = 1, previous_state_SW3 = 1; // active low buttons; initialized to deasserted state
-
+ /**
+  * @brief Initialize GPIO pins for buttons
+  * @return cy_rslt_t Status of initialization
+  */
  cy_rslt_t buttons_init_gpio(void) {
-    // to intialize the buttons is to initialize the GPIO pins as inputs
-    cy_rslt_t rslt;
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW1, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) { // initially deasserted (1)
-        printf("Error initializing SW1\n\r");
-        CY_ASSERT(0);
+    cy_rslt_t rslt = CY_RSLT_SUCCESS;
+    
+    uint32_t gpio_pins[3] = {PIN_BUTTON_SW1, PIN_BUTTON_SW2, PIN_BUTTON_SW3};
+    
+    for (int i = 0; i < 3; i++) {
+        rslt = cyhal_gpio_init(gpio_pins[i], CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_PULLUP, 1);
+        if (rslt != CY_RSLT_SUCCESS) {
+            return rslt;
+        }
     }
+    
+    return rslt;
+ }
 
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW2, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) {
-        printf("Error initializing SW2\n\r");
-        CY_ASSERT(0);
-    }
 
-    if ((rslt = cyhal_gpio_init(PIN_BUTTON_SW3, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, 0)) != CY_RSLT_SUCCESS) {
-        printf("Error initializing SW3\n\r");
-        CY_ASSERT(0);
-    }
 
-    return CY_RSLT_SUCCESS;
-}
+
+ void buttons_init(void) {
+    buttons_init_gpio();
+ }
 
 button_state_t buttons_get_state(ece353_button_t button) {
-    int button_val; // current button logic level
-    int previous_state_to_be; // the previous state to be updated
+    button_state_t state;
 
-    // we don't consider rising or falling edge as a previous state
-    // but we should output the state as such when the conditions are met
+    //read current logic level
+    uint32_t gpio_pins[3] = {PIN_BUTTON_SW1, PIN_BUTTON_SW2, PIN_BUTTON_SW3};
+    uint8_t current_logic_level = cyhal_gpio_read(gpio_pins[button]);
 
-    // NOTE: test out the board; could be wrong
-    if (button == BUTTON_SW1) {
-        previous_state_to_be = (button_val = cyhal_gpio_read(PIN_BUTTON_SW1));
-        if (previous_state_SW1 == 0) {
-            if (button_val == 0) {
-                // no need to update previous state
-                return BUTTON_STATE_LOW; // 0 -> 0, still low
-            }
-            else {
-                previous_state_SW1 = button_val;
-                return BUTTON_STATE_RISING_EDGE; // 0 -> 1
-            }
-        }
-        else if (button_val == 1) {
-            // no need to update previous state
-            return BUTTON_STATE_HIGH; // 1 -> 1
-        } else {
-            previous_state_SW1 = button_val;
-            return BUTTON_STATE_FALLING_EDGE; // 1 -> 0
-        }
+
+    
+    // Determine state based on current vs previous logic levels
+    // 00 (0) = 0->0 (LOW)
+    // 01 (1) = 0->1 (RISING_EDGE)
+    // 10 (2) = 1->0 (FALLING_EDGE)
+    // 11 (3) = 1->1 (HIGH)
+    if (prev_logic_level[button] == 1 && current_logic_level == 1) {
+        state = BUTTON_STATE_HIGH;
+    } else if (prev_logic_level[button] == 1 && current_logic_level == 0) {
+        state = BUTTON_STATE_FALLING_EDGE;
+    } else if (prev_logic_level[button] == 0 && current_logic_level == 1) {
+        state = BUTTON_STATE_RISING_EDGE;
+    } else {
+        state = BUTTON_STATE_LOW;
     }
 
-    if (button == BUTTON_SW2) {
-        previous_state_to_be = (button_val = cyhal_gpio_read(PIN_BUTTON_SW2));
-        if (previous_state_SW2 == 0) {
-            if (button_val == 0) {
-                return BUTTON_STATE_LOW; // 0 -> 0
-            }
-            else {
-                previous_state_SW2 = button_val;
-                return BUTTON_STATE_RISING_EDGE; // 0 -> 1
-            }
-        } 
-        else if (button_val == 1) {
-            return BUTTON_STATE_HIGH; // 1 -> 1
-        }
-        else {
-            previous_state_SW2 = button_val;
-            return BUTTON_STATE_FALLING_EDGE; // 1 -> 0
-        }
-    }
+    // Update previous logic level
+    prev_logic_level[button] = current_logic_level;
+    
+    return state;
+ }
 
-    if (button == BUTTON_SW3) {
-        previous_state_to_be = (button_val = cyhal_gpio_read(PIN_BUTTON_SW3));
-        if (previous_state_SW3 == 0) {
-            if (button_val == 0) {
-                return BUTTON_STATE_LOW; // 0 -> 0
-            }
-            else {
-                previous_state_SW3 = button_val;
-                return BUTTON_STATE_RISING_EDGE; // 0 -> 1
-            }
-        } 
-        else if (button_val == 1) {
-            return BUTTON_STATE_HIGH; // 1 -> 1
-        }
-        else {
-            previous_state_SW3 = button_val;
-            return BUTTON_STATE_FALLING_EDGE; // 1 -> 0
-        }
-    }
-    return BUTTON_STATE_HIGH; // default return value
-}
-
-
-// Timer object and configuration for button debouncing; these and the function below are  kept static to limit scope to this file
+//timer global variables
 static cyhal_timer_t button_timer;
 static cyhal_timer_cfg_t button_timer_cfg;
 
-// Timer interrupt handler for button debouncing
-static void button_timer_handler(void* args, cyhal_timer_event_t event)
-{
-    // static within a function itself acts like a global variable but limits scope to this function, so we can keep track of counts for each button which is tracked across multiple calls to this function. the initialization of the static variable only happens once.
-    static uint8_t button_count[3] = {0, 0, 0}; // counters for SW1, SW2, SW3
+static void button_timer_handler(void *arg, cyhal_timer_event_t event) {
+    static uint8_t button_counts[3] = {[0] = 0, [1] = 0, [2] = 0};
 
-    // get the current state of each button
-    uint8_t SW1 = PORT_BUTTON_SW1->IN & MASK_BUTTON_PIN_SW1;
-    uint8_t SW2 = PORT_BUTTON_SW2->IN & MASK_BUTTON_PIN_SW2;
-    uint8_t SW3 = PORT_BUTTON_SW3->IN & MASK_BUTTON_PIN_SW3;
+    uint8_t sw1 = PORT_BUTTON_SW1->IN & MASK_BUTTON_SW1; //MASK_BUTTON_PIN_SW1???
+    uint8_t sw2 = PORT_BUTTON_SW2->IN & MASK_BUTTON_SW2;
+    uint8_t sw3 = PORT_BUTTON_SW3->IN & MASK_BUTTON_SW3;
 
-    // check past states up to 4 interrupts ago and update counts
-    if (SW1 == 0) 
-    {
-        button_count[0]++;
-        if (button_count[0] == 5) 
-        { // 5 consecutive reads of pressed state
-            ECE353_Events.sw1 = 1; // set event flag for SW1
+    //SW1 Debounce
+    if (sw1 == 0) {
+        button_counts[0]++;
+
+        if (button_counts[0] == 5) {
+            // Debounced press detected for SW1
+            ECE353_Events.sw1 = 1;
         }
-    } else 
-    {
-        button_count[0] = 0; // if button is not in pressed state, reset count (since we need consecutive reads)
-        ECE353_Events.sw1 = 0; // clears button pressed event
+    } else {
+        button_counts[0] = 0;
     }
 
-    if (SW2 == 0) 
-    {
-        button_count[1]++;
-        if (button_count[1] == 5) 
-        {
+    //SW2 Debounce
+    if (sw2 == 0) {
+        button_counts[1]++;
+
+        if (button_counts[1] == 5) {
+            // Debounced press detected for SW2
             ECE353_Events.sw2 = 1;
         }
-    } else 
-    {
-        button_count[1] = 0;
-        ECE353_Events.sw2 = 0;
+    } else {
+        button_counts[1] = 0;
     }
 
-    if (SW3 == 0) 
-    {
-        button_count[2]++;
-        if (button_count[2] == 5) 
-        {
+    //SW3 Debounce
+    if (sw3 == 0) {
+        button_counts[2]++;
+
+        if (button_counts[2] == 5) {
+            // Debounced press detected for SW3
             ECE353_Events.sw3 = 1;
         }
-    } else 
-    {
-        button_count[2] = 0;
-        ECE353_Events.sw3 = 0;
+    } else {
+        button_counts[2] = 0;
     }
-
 }
 
 // Function to initialize the timer for button debouncing
-cy_rslt_t buttons_init_timer()
-{
-    // we assume buttons will stop bouncing within 25 milliseconds
-    // and configure a timer to generate interrupts every 5 ms
-    // so when we see five consecutive falling edges, we can confirm the button press
+cy_rslt_t buttons_init_timer(void) {
 
-    // to find the ticks value for 5 ms at 100 MHz:
-    // each tick is 1/100M = 1e-8 seconds
-    // so for 5 ms, we need 5e-3 / 1e-8 = 500000 ticks
+    //Initialize the timer for button debouncing for a period of 5ms
     return timer_init(&button_timer, &button_timer_cfg, 500000, button_timer_handler);
 }

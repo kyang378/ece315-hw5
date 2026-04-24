@@ -26,31 +26,49 @@
  */
 void task_buzzer(void *arg)
 {
-    (void)arg; // Unused parameter
-
-    EventBits_t uxBits; // current event bits
+    (void)arg;
 
     while (1)
     {
-        // wait for either SW1 pressed or S2 pressed event
-        uxBits = xEventGroupWaitBits(ECE353_RTOS_Events,
-                                ECE353_EVENT_BUTTON_SW1_PRESSED | ECE353_EVENT_BUTTON_SW2_PRESSED,
-                                pdTRUE,
-                                pdFALSE,
-                                portMAX_DELAY);
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_SW1_PRESSED | ECE353_EVENT_SW2_PRESSED,
+            pdTRUE,     // clear bits on exit
+            pdFALSE,    // wait for ANY
+            portMAX_DELAY
+        );
 
-        if (uxBits & ECE353_EVENT_BUTTON_SW1_PRESSED) {
-            printf("SW1 Pressed --- Enabling Buzzer\n\r");
+        if (events & ECE353_EVENT_SW1_PRESSED)
+        {
             buzzer_on();
         }
 
-        if (uxBits & ECE353_EVENT_BUTTON_SW2_PRESSED) {
-            printf("SW2 Pressed --- Disabling Buzzer\n\r");
+        if (events & ECE353_EVENT_SW2_PRESSED)
+        {
             buzzer_off();
         }
-
-        vTaskDelay(pdMS_TO_TICKS(100));
     }
+}
+
+/* Buzzer Task Initialization */
+bool task_buzzer_init(void){
+    BaseType_t result;
+
+    // Create the button task
+    result = xTaskCreate(
+        task_buzzer, 
+        "Buzzer Task", 
+        configMINIMAL_STACK_SIZE, 
+        NULL, 
+        tskIDLE_PRIORITY + 1, 
+        NULL
+    );
+
+    if(result != pdPASS)
+    {
+        return false;
+    }
+    return true;
 
 }
 #endif

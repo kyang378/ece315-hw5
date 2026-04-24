@@ -19,6 +19,7 @@
  #include "rtos_events.h"
 
  void task_buzzer(void *arg);
+ bool task_buzzer_init(void);
  #endif
 
  #endif // __TASK_BUZZER_H__    

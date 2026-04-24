@@ -25,9 +25,8 @@ char APP_DESCRIPTION[] = "ECE353: Ex 13 - FreeRTOS Temp Sensor";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
-cyhal_i2c_t *i2c_Obj = NULL; // different global variables separate from the static ones in task_temp_sensor.c??
-
-SemaphoreHandle_t i2c_Semaphore = NULL;
+cyhal_i2c_t *I2C_Obj = NULL;
+SemaphoreHandle_t I2C_Semaphore = NULL;
 QueueHandle_t Queue_Temp_Sensor_Responses = NULL;
 
 /*****************************************************************************/
@@ -40,22 +39,38 @@ void task_system_control(void *arg);
 /*****************************************************************************/
 void task_system_control(void *arg)
 {
-    (void)arg; // Unused parameter
-    float temperature = 0.0;
-    
-    task_console_printf("Starting System Control Task\r\n");
 
-    while(1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(500));
+    (void)arg; // Unused parameter
+    // temp_sensor_packet_t temp_packet;
+    
+    // task_console_printf("Starting System Control Task\r\n");
+
+    // while(1)
+    // {
+    //     vTaskDelay(pdMS_TO_TICKS(500));
         
-        if(system_sensors_get_temp(Queue_Temp_Sensor_Responses, &temperature) == true)
-        {
+    //     /* Read the temp sensor */
+    //     temp_packet.operation = TEMP_SENSOR_READ;
+    //     temp_packet.return_queue = Queue_Temp_Sensor_Responses;
+
+    //     xQueueSend(Queue_Temp_Sensor_Requests, &temp_packet, portMAX_DELAY);
+
+    //     /* Wait for the response from the temp sensor task */
+    //     if(xQueueReceive(Queue_Temp_Sensor_Responses, &temp_packet, portMAX_DELAY) == pdTRUE)
+    //     {
+    //         if(temp_packet.operation == TEMP_SENSOR_RESPONSE)
+    //         {
+    //             task_console_printf("Temperature: %.2f C\r\n", temp_packet.value);
+    //         }
+    //     }
+    //}
+    float temperature = 0.0;
+    while(1) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        if(system_sensors_get_temp(Queue_Temp_Sensor_Responses, &temperature) == true) {
             task_console_printf("Temperature: %.2f C\r\n", temperature);
-        }
-        else
-        {
-            task_console_printf("Failed to read temperature!\r\n");
+        } else {
+            task_console_printf("Error reading temperature");
         }
     }
 }
@@ -76,8 +91,8 @@ void app_init_hw(void)
     printf("**************************************************\n\r");
 
     /* Initialize the i2c interface */
-    i2c_Obj = i2c_init(PIN_I2C_SDA, PIN_I2C_SCL);
-    if (i2c_Obj == NULL)
+    I2C_Obj = i2c_init(PIN_I2C_SDA, PIN_I2C_SCL);
+    if (I2C_Obj == NULL)
     {
         printf("I2C initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);
@@ -98,8 +113,8 @@ void app_main(void)
     Queue_Temp_Sensor_Responses = xQueueCreate(1, sizeof(device_response_msg_t));
     
     /* Create the I2C Semaphore */
-    i2c_Semaphore = xSemaphoreCreateBinary();
-    if(i2c_Semaphore == NULL)
+    I2C_Semaphore = xSemaphoreCreateBinary();
+    if(I2C_Semaphore == NULL)
     {
         printf("Failed to create I2C semaphore!\n\r");
         for(int i = 0; i < 10000; i++);
@@ -108,7 +123,7 @@ void app_main(void)
 
     /* Need to give the semaphore so that the first task that attempts to take
        the semaphore is successful */
-    xSemaphoreGive(i2c_Semaphore);
+    xSemaphoreGive(I2C_Semaphore);
 
     if(!task_console_init())
     {
@@ -117,7 +132,7 @@ void app_main(void)
         CY_ASSERT(0);
     }
 
-    if(!task_temp_sensor_resources_init(&i2c_Semaphore, i2c_Obj))
+    if(task_temp_sensor_resources_init(&I2C_Semaphore, I2C_Obj) == false)
     {
         printf("Temp Sensor Task initialization failed!\n\r");
         for(int i = 0; i < 10000; i++);

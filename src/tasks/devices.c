@@ -18,63 +18,166 @@
 #include "task_eeprom.h"
 #include "task_console.h"
 
-// Parse the CLI command string into a device request. The response queue is
-// owned by the caller, so this function only fills in the command fields.
-bool parse_cli_data(char* data, device_request_msg_t* request)
-{
-    int address = 0;
-    int value = 0;
-    char extra = '\0';
-    char command[32] = {0};
 
-    if(data == NULL || request == NULL)
+/**
+ * @brief Helper method to skip spaces when parsing
+ * 
+ * @param p the current parsing index
+ * @return char* the adress of the next non-space character
+ */
+static char* skip_spaces(char *p)
+{
+    while (*p == ' ') {
+        p++;
+    }
+    return p;
+}
+
+
+/**
+ * @brief Parses a string for a hexidecimal number (adress) beginning with 0x 
+ * 
+ * @param p the current parsing index
+ * @param out the hex number found
+ * @return true if a hex number was found
+ * @return false if a hex number was not found
+ */
+static bool parse_hex(const char **p, uint32_t *out)
+{
+    const char *s = *p;
+    uint32_t value = 0;
+
+    // Must start with "0x" or "0X"
+    if (!(s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))) {
+        return false;
+    }
+    s += 2;
+
+    bool found_digit = false;
+
+    while (1)
     {
+        char c = *s;
+        uint8_t digit;
+
+        if (c >= '0' && c <= '9') {
+            digit = c - '0';
+        }
+        else if (c >= 'A' && c <= 'F') {
+            digit = c - 'A' + 10;
+        }
+        else if (c >= 'a' && c <= 'f') {
+            digit = c - 'a' + 10;
+        }
+        else {
+            break;
+        }
+
+        found_digit = true;
+        value = (value << 4) | digit;
+        s++;
+    }
+
+    if (!found_digit) {
         return false;
     }
 
-    request->device = DEVICE_UNKNOWN;
-    request->operation = DEVICE_OP_READ;
-    request->address = 0;
-    request->value = 0;
-    request->response_queue = NULL;
+    *out = value;
+    *p = s;
+    return true;
+}
 
-    if(sscanf(data, "EEPROM R %i %c", &address, &extra) == 1)
-    {
-        if(address < 0 || address > 0x7FFF)
-        {
-            return false;
+/**
+ * @brief parses a command and fills out the appropriate device request packet
+ * 
+ * @param data the command received
+ * @param request the request packet to be filled
+ * @return true if successful
+ * @return false if unsuccessful or if command is invalid
+ */
+bool parse_cli_data(char *data, device_request_msg_t *request) {
+    char *p = data;
+
+
+    // EEPROM COMMANDS
+    
+    if (strncmp(p, "EEPROM", 6) == 0) {
+        p += 6;
+        p = skip_spaces(p);
+
+        // EEPROM read
+        if (*p == 'R') {
+            p++;
+            p = skip_spaces(p);
+
+            //get the adress
+            uint32_t addr32;
+            if (!parse_hex((const char **)&p, &addr32)) {
+                return false;
+            }
+
+            //fill out packet
+            request->device    = DEVICE_EEPROM;
+            request->operation = DEVICE_OP_READ;
+            request->address   = (uint16_t)addr32;
+            request->value     = 0;
+            request->response_queue = NULL; 
+
+            return true;
         }
 
-        request->device = DEVICE_EEPROM;
-        request->operation = DEVICE_OP_READ;
-        request->address = (uint16_t)address;
-        return true;
-    }
-
-    if(sscanf(data, "EEPROM W %i %i %c", &address, &value, &extra) == 2)
-    {
-        if(address < 0 || address > 0x7FFF || value < 0 || value > 0xFF)
+        //EEPROM Write
+        if (*p == 'W')
         {
-            return false;
+            p++;
+            p = skip_spaces(p);
+
+            //get adress to write to
+            uint32_t addr32;
+            if (!parse_hex((const char **)&p, &addr32)) {
+                return false;
+            }
+
+            //get value to write
+            p = skip_spaces(p);
+            
+            uint32_t val32;
+            if (!parse_hex((const char **)&p, &val32)) {
+                return false;
+            }
+
+            //fill out packet
+            request->device    = DEVICE_EEPROM;
+            request->operation = DEVICE_OP_WRITE;
+            request->address   = (uint16_t)addr32;
+            request->value     = (uint8_t)val32;
+            request->response_queue = NULL;
+
+            return true;
         }
 
-        request->device = DEVICE_EEPROM;
-        request->operation = DEVICE_OP_WRITE;
-        request->address = (uint16_t)address;
-        request->value = (uint8_t)value;
+        return false;
+    }
+
+    // CAP_TOUCH COMMAND
+    if (strcmp(p, "CAP_TOUCH") == 0) {
+        request->device         = DEVICE_CAP_TOUCH;
+        request->operation      = DEVICE_OP_READ;
+        request->address        = 0;
+        request->value          = 0;
+        request->response_queue = NULL;   // will be set by console
+
         return true;
     }
 
-    // CAP_TOUCH has no parameters, so accept it only when it is the sole token.
-    if ((sscanf(data, "%31s %c", command, &extra) == 1) &&
-        (strcmp(command, "CAP_TOUCH") == 0))
-    {
-        request->device = DEVICE_CAP_TOUCH;
-        request->operation = DEVICE_OP_READ;
-        return true;
-    }
+    // OTHER COMMANDS HERE ...
 
     return false;
 }
+
+
+
+
+
 
 #endif /* ECE353_FREERTOS */

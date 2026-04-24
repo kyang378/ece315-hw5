@@ -3349,17 +3349,6 @@ const FONT_INFO Consolas_20ptFontInfo =
 	Consolas_20ptBitmaps, /*  Character bitmap array */
 };
 
-/* Font information for LARGE_NUMBERS - for hw01*/
-const FONT_INFO LARGE_NUMBERS_FontInfo =
-{
-	39, /*  Character height */
-	0, /*  Start character; note this is NOT '0', but a literal value */
-	9, /*  End character */
-	5, /*  Width of space character */
-	FONT_CHAR_INFO_LARGE_NUMBERS, /*  Character descriptor array */
-	FONT_NUM_LARGE_BITMAPS, /*  Character bitmap array */
-};
-
 /**
  * @brief 
  * Draws the current time on the LCD screen.
@@ -3387,8 +3376,7 @@ void lcd_draw_time(uint8_t minutes, uint8_t seconds)
 		SECONDS_LSD_X_LOCATION,
 	};
 
-	for (uint8_t i = 0; i < 5; i++)
-	{
+	for (uint8_t i = 0; i < 5; i++) { //loop runs four times
 	    lcd_draw_image(
     	    locations[i],
     	    LCD_VERTICAL_CENTER,
@@ -3400,4 +3388,5 @@ void lcd_draw_time(uint8_t minutes, uint8_t seconds)
     	   true 
     	);
 	}
+
 }

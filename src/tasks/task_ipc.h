@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include "cyhal_uart.h"
 #include <stdint.h>
+#include <stdarg.h>
 #include "drivers.h"
 #include "portmacro.h"
 #include "rtos_events.h"
@@ -27,7 +28,6 @@
 
 #define IPC_STACK_SIZE 512
 #define IPC_PRIORITY 2 // Priority for IPC tasks and events
-#define IPC_ACK_TIMEOUT_MS 1000
 
 #define IPC_PACKET_START 0xAA
 
@@ -44,6 +44,8 @@ typedef enum {
     IPC_CMD_INACTIVE_PLAYER = 0xC2,
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
+    IPC_CMD_GUESS = 0xC5,
+    IPC_CMD_FEEDBACK = 0xC6
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -65,6 +67,11 @@ typedef enum {
  */
 typedef union {
     ipc_status_t status;
+    uint8_t guess[4];
+    struct {
+        uint8_t exact;
+        uint8_t misplaced;
+    } feedback;
 } ipc_payload_t;
 
 /* Use a Packed Structure */
@@ -86,6 +93,10 @@ extern cyhal_uart_cfg_t IPC_Uart_Config;
 extern volatile ipc_packet_t* volatile IPC_Rx_Produce_Buffer;
 extern volatile ipc_packet_t* volatile IPC_Rx_Consume_Buffer;
 extern TaskHandle_t TaskHandle_IPC_Rx;
+extern uint8_t IPC_Last_Received_Guess[4];
+extern uint8_t IPC_Last_Received_Feedback_Exact;
+extern uint8_t IPC_Last_Received_Feedback_Misplaced;
+extern uint16_t IPC_Last_Received_Sequence;
 
 /* Globals used for transmitting data */
 extern QueueHandle_t Queue_IPC_Tx;
@@ -94,6 +105,8 @@ extern TaskHandle_t TaskHandle_IPC_Tx;
 bool task_ipc_resources_init_rx(void);
 bool task_ipc_resources_init_tx(void);
 bool task_ipc_init(void);
+bool ipc_send_guess(uint16_t seq, uint8_t guess[4]);
+
 
 /**
  * @brief 
@@ -110,6 +123,10 @@ bool ipc_send_inactive_player(uint16_t sequence_num);
 bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);
 bool ipc_send_ack(uint16_t sequence_num);
 bool ipc_wait_for_ack(uint32_t timeout_ms);
+bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]);
+bool ipc_wait_for_feedback(uint32_t timeout_ms, uint8_t *exact_out, uint8_t *misplaced_out);
+bool ipc_send_feedback(uint16_t seq, uint8_t exact, uint8_t misplaced);
+bool ipc_send_guess(uint16_t seq, uint8_t guess[4]);
 
 #endif /* ECE353_FREERTOS */
 

@@ -9,8 +9,11 @@
  * 
  */
 
- #include "task_buttons.h"
- #include "task_console.h"
+#include "main.h"
+#include "rtos_events.h"
+#include "task_buttons.h"
+#include "task_console.h"
+
 
  #ifdef ECE353_FREERTOS
  /**
@@ -20,7 +23,7 @@
   * the button for 30mS. Each button should be sampled every 15mS.
   *
   * When a button press is detected, the corresponding event is set in
-  * the event group ECE353_RTOS_Events.
+  * in the event group ECE353_RTOS_Events.
   *
   * @param arg 
   * Unused parameter
@@ -29,70 +32,31 @@
  {
     (void)arg; // Unused parameter
 
-    // keeps track of how many times we've counted a button being pressed
-    uint32_t button_count[3] = {0, 0, 0};
-
     while (1)
     {
         // Monitor button SW1
-        if ((PORT_BUTTON_SW1->IN & MASK_BUTTON_PIN_SW1) == 0) // active low buttons
+        if (buttons_get_state(BUTTON_SW1) == BUTTON_STATE_FALLING_EDGE)
         {
-            button_count[0]++;
-
-            if (button_count[0] == 2) // so a debouncing of 30ms
-            {
-                // this is really probably also true for other exercises...
-                // we're not creating the console_task in hw02.c
-                #if !defined(HW02)
-                printf("SW1 pressed\n\r");
-                #endif
-                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW1_PRESSED);
-            }
+            //task_console_printf("SW1 Pressed \n"); //TODO for some reason, this is incompatible with HW02
+            xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW1_PRESSED);
         }
-        else {
-            button_count[0] = 0; // keeps looking for 2 consecutive falling edges
-        }
-        
 
-        // Monitor button SW2
-        if ((PORT_BUTTON_SW2->IN & MASK_BUTTON_PIN_SW2) == 0)
+        // Monitor button SW2 
+        if (buttons_get_state(BUTTON_SW2) == BUTTON_STATE_FALLING_EDGE)
         {
-            button_count[1]++;
-
-            if (button_count[1] == 2)
-            {
-                #if !defined(HW02)
-                printf("SW2 pressed\n\r");
-                #endif
-                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW2_PRESSED);
-            }
+            //task_console_printf("SW2 Pressed\n");
+            xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW2_PRESSED);
         }
-        else {
-            button_count[1] = 0;
-        }
-
 
         // Monitor button SW3
-        if ((PORT_BUTTON_SW3->IN & MASK_BUTTON_PIN_SW3) == 0)
+        if (buttons_get_state(BUTTON_SW3) == BUTTON_STATE_FALLING_EDGE)
         {
-            button_count[2]++;
-
-            if (button_count[2] == 2)
-            {
-                #if !defined(HW02)
-                printf("SW3 pressed\n\r");
-                #endif
-                xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_BUTTON_SW3_PRESSED);
-            }
+            //task_console_printf("SW3 Pressed\n");
+            xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_SW3_PRESSED);
         }
-        else {
-            button_count[2] = 0;
-        }
-  
 
-        // Debounce delay = 15ms
-        vTaskDelay(pdMS_TO_TICKS(15));
-
+        // Debounce delay
+        vTaskDelay(pdMS_TO_TICKS(30));
     }
  }
 
@@ -101,16 +65,9 @@ bool task_button_init(void){
 
     BaseType_t result;
 
-    // Initialize the buttons
-    cy_rslt_t rslt = buttons_init_gpio();
-    if(rslt != CY_RSLT_SUCCESS)
-    {
-        printf("Button initialization failed!\n\r");
-        for(int i = 0; i < 10000; i++);
-        CY_ASSERT(0);
-    }
+    //buttons_init();
 
-    // Create the button task
+    // Create the button task 
     result = xTaskCreate(
         task_buttons, 
         "Button Task", 
@@ -127,4 +84,12 @@ bool task_button_init(void){
 
     return true;
 }
+
+ bool task_buttons_init(void) {
+    task_button_init();
+ }
+ 
+ bool task_buttons_resources_init(void){
+    task_button_init();
+ }
 #endif

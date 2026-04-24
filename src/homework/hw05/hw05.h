@@ -25,7 +25,7 @@
 #include "task_ipc.h"
 #include "task_lcd.h"
 #include "master_mind_lib.h"
-#include "ice11.c"  // for discover_board function
+#include "task_light_sensor.h"
 
 #define  TASK_SYSTEM_CONTROL_STACK_SIZE    (configMINIMAL_STACK_SIZE*5)
 #define  TASK_SYSTEM_CONTROL_PRIORITY      (tskIDLE_PRIORITY + 1U)  
@@ -36,6 +36,28 @@
 void task_hw05_system_control(void *pvParameters);
 static void hw05_semaphores_init(void);
 static void hw05_queues_init(void);
+static bool discover_board(uint16_t *sequence_num, bool *player1);
+int coords_to_tile(uint16_t x, uint16_t y);
+void switchSelectTiles(int currTile, int nextTile);
+void addToCypher(int currSelectTile, int currCypherTile);
+void select_cypher(uint8_t cypher_out[4]);
+static void send_ready_status(uint16_t *sequence_num);
+static void wait_for_other_player_ready(uint8_t *high_score);
+static bool update_dark_mode(void);
+
+//Game state machine
+typedef enum {
+    HW05_STATE_INIT = 0,
+    HW05_STATE_ENTER_GUESS,      // If it's my turn
+    HW05_STATE_WAIT_FOR_GUESS,   // If it's opponent's turn
+    HW05_STATE_EVAL_GUESS,       // I evaluate opponent's guess
+    HW05_STATE_SEND_FEEDBACK,    // I send feedback to opponent
+    HW05_STATE_WAIT_FOR_FEEDBACK,// I wait for feedback on my guess
+    HW05_STATE_CHECK_WIN,        // Check if game ends
+    HW05_STATE_GAME_OVER         // Final state
+} hw05_game_state_t;
+
+
 
 
  #endif

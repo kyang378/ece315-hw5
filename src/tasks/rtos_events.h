@@ -18,23 +18,33 @@
 /*******************************************************************************
 * Event Group for system events.
  ******************************************************************************/
-
- // extern means this variable is defined in some other file, but we can access it here by including the header file; this is because we want to use this event group in multiple files, so we want to define it in one file and declare it as extern in the header file so we can access it in other files that include this header file.
-
- // for example, we can define the event group in ice05.c, and then include this header file in task_buttons.h and task_buzzer.h to access the event group and set/wait for events.
- extern EventGroupHandle_t ECE353_RTOS_Events; 
+extern EventGroupHandle_t ECE353_RTOS_Events;
 
 /*******************************************************************************
 * Macros used to define the system events
 ******************************************************************************/
+//Switches
+#define ECE353_EVENT_SW1_PRESSED (1 << 0)  // Event bit for SW1 pressed
+#define ECE353_EVENT_SW2_PRESSED (1 << 1)  // Event bit for SW2 pressed
+#define ECE353_EVENT_SW3_PRESSED (1 << 2)  // Event bit for SW3 pressed
 
-#define ECE353_EVENT_BUTTON_SW1_PRESSED   (1 << 0)    // Event bit 0
-#define ECE353_EVENT_BUTTON_SW2_PRESSED   (1 << 1)    
-#define ECE353_EVENT_BUTTON_SW3_PRESSED   (1 << 2)
-#define ECE353_EVENT_JOYSTICK_CHANGED     (1 << 3)
+//Joystick
+#define ECE353_EVENT_JOYSTICK_UP        (1 << 4)
+#define ECE353_EVENT_JOYSTICK_DOWN      (1 << 5)
+#define ECE353_EVENT_JOYSTICK_LEFT      (1 << 6)
+#define ECE353_EVENT_JOYSTICK_RIGHT     (1 << 7)
 
-#define ECE353_RTOS_EVENTS_IPC_ACK_RECEIVED          (1 << 4)
-#define ECE353_RTOS_EVENTS_IPC_DISCOVERY_RECEIVED    (1 << 5)
+//IPC - verify this is correct if not working
+#define ECE353_EVENT_IPC_ACK_RECEIVED           (1<<9)
+#define ECE353_EVENT_IPC_DISCOVERY_RECEIVED     (1 << 10)
+#define ECE353_EVENT_IPC_ACTIVE_RECEIVED      (1 << 11)
+#define ECE353_EVENT_IPC_INACTIVE_RECEIVED    (1 << 12)
+#define ECE353_EVENT_IPC_STATUS_RECEIVED      (1 << 13)
+#define ECE353_EVENT_IPC_GUESS_RECEIVED       (1 << 14)
+#define ECE353_EVENT_IPC_FEEDBACK_RECEIVED    (1 << 15)        
+
+
+
 
 #endif // ECE353_FREERTOS
 

@@ -25,19 +25,19 @@ void imu_write_reg(
     uint8_t value
 )
 {
-    // Write 2 bytes: the register address and the value
+    //write 2 bytes: Register address and value
     uint8_t tx_buffer[2];
-    uint8_t rx_buffer[2]; // dummy buffer for received data
-    tx_buffer[0] = reg & 0x7F; // clear MSB for write
+    uint8_t rx_buffer[2];
+    tx_buffer[0] = reg & 0x7F; //clear for write
     tx_buffer[1] = value;
 
-    // Pull CS low to select the IMU
+    //Pull CS low to select the IMU
     cyhal_gpio_write(cs_pin, 0);
 
-    // Perform the SPI transfer
+    //Send data over SPI
     cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
 
-    // Pull CS high to deselect the IMU
+    //Pull CS high to deselect IMU
     cyhal_gpio_write(cs_pin, 1);
 }
 
@@ -53,27 +53,25 @@ uint8_t imu_read_reg(
     uint8_t reg
 )
 {
-    // Write the register address with MSB set to indicate a read
     uint8_t tx_buffer[2];
-    uint8_t rx_buffer[2]; // buffer for received data
+    uint8_t rx_buffer[2];
+    tx_buffer[0] = reg | 0x80; //set MSB for read
+    tx_buffer[1] = 0xFF;    //dummy byte
 
-    tx_buffer[0] = reg | 0x80; // set MSB for read
-    tx_buffer[1] = 0x00; // dummy byte (to transmit this byte of data in order to keep the SPI clock running so that we can receive the register value from the IMU)
-
-    // Pull CS low to select the IMU
+    //Pull CS low to select the IMU
     cyhal_gpio_write(cs_pin, 0);
 
-    // Perform the SPI transfer
+    //send data over SPI
     cyhal_spi_transfer(spi_obj, tx_buffer, 2, rx_buffer, 2, 0xFF);
 
-    // Pull CS high to deselect the IMU
+    //Pull CS high to deselect IMU
     cyhal_gpio_write(cs_pin, 1);
 
-    return rx_buffer[1]; // The second byte contains the register value; first byte is don't-care
+    return rx_buffer[1];
 }
 
 /**
- * @brief Read multiple (4) registers from the IMU
+ * @brief Read multiple registers from the IMU
  * 
  * @param reg 
  * @param buffer 
@@ -87,22 +85,23 @@ void imu_read_registers(
     uint8_t length
 )
 {
-    uint8_t read_cmd = reg | 0x80;
+    uint8_t tx_buffer[1 + length];
+    uint8_t rx_buffer[1 + length];
+    tx_buffer[0] = reg | 0x80; //Set MSB for read and auto-increment. IF ERRORS, may be 0x40 instead of 0x4D, check ex13 video
+    //memset(&tx_buffer[1], 0xFF, length); //fill with dummy bytes
 
-    if(buffer == NULL || length == 0)
-    {
-        return;
-    }
-
-    // Pull CS low to select the IMU
+    //Pull CS low to select the IMU
     cyhal_gpio_write(cs_pin, 0);
 
-    // Send the starting register address, then clock out the requested bytes.
-    cyhal_spi_transfer(spi_obj, &read_cmd, 1, NULL, 0, 0xFF);
-    cyhal_spi_transfer(spi_obj, NULL, 0, buffer, length, 0xFF);
+    //send data over SPI
+    cyhal_spi_transfer(spi_obj, tx_buffer, 1 + length, rx_buffer, 1 + length, 0xFF);
 
-    // Pull CS high to deselect the IMU
+    //Pull CS high to deselect IMU
     cyhal_gpio_write(cs_pin, 1);
+
+    //copy data to the buffer
+    memcpy(buffer, &rx_buffer[1], length);
+
 }
 
 /**
@@ -127,7 +126,7 @@ bool imu_init(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
     }
 
     // Reset the IMU
-    imu_write_reg(spi_obj, cs_pin, IMU_REG_CTRL3_C, 0x01); // CTRL3_C register; first bit is the reset bit
+    imu_write_reg(spi_obj, cs_pin, IMU_REG_CTRL3_C, 0x01); // CTRL3_C register
 
     // Wait for the reset to complete
     do
@@ -135,10 +134,7 @@ bool imu_init(cyhal_spi_t *spi_obj, cyhal_gpio_t cs_pin)
         cyhal_system_delay_ms(1);
     } while (imu_read_reg(spi_obj, cs_pin, IMU_REG_CTRL3_C) & 0x01);
 
-    // Configure the IMU:  104 Hz (slowest rate supported), ±2g, ±250 dps
-    // the slower the rate, the less power the IMU consumes
-    // can detect the acceleration up to ±2g, and angular rate up to ±250 dps (degrees per second)
-    // the smaller the range, the more sensitive the measurements are (i.e. smaller changes in acceleration/angular rate will result in larger changes in the raw register values, which allows for more precise measurements)
+    // Configure the IMU:  104 Hz, ±2g, ±250 dps
     imu_write_reg(spi_obj, cs_pin, IMU_REG_CTRL1_XL, ODR_104HZ | FS_XL_2G);
 
     return true;

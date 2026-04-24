@@ -23,8 +23,14 @@ char APP_DESCRIPTION[] = "ECE353: ICE 04 - PWM Buzzer";
 /*****************************************************************************/
 /* Global Variables                                                          */
 /*****************************************************************************/
-cyhal_pwm_t pwm_obj_red, pwm_obj_green, pwm_obj_blue;
+cyhal_pwm_t pwm_led_red;
+cyhal_pwm_t pwm_led_green;
+cyhal_pwm_t pwm_led_blue;
 
+//Store current duty cycle for each LED
+uint8_t duty_cycle_red = 0;
+uint8_t duty_cycle_green = 0;
+uint8_t duty_cycle_blue = 0;
 /*****************************************************************************/
 /* Function Declarations                                                     */
 /*****************************************************************************/
@@ -51,40 +57,18 @@ void app_init_hw(void)
     printf("* Name:%s\n\r", NAME);
     printf("**************************************************\n\r");
     
-    // initialize the buttons and button timer
-    if ((rslt = buttons_init_gpio()) != CY_RSLT_SUCCESS) {
-        printf("Error initializing buttons\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a while
-        CY_ASSERT(0);
-    }
+    /* ADD CODE */
 
-    if ((rslt = buttons_init_timer()) != CY_RSLT_SUCCESS) {
-        printf("Error initializing button timer\n\r");
-        for (int i = 0; i < 1000000; i++); // delay for a while
-        CY_ASSERT(0);
-    }
+    rslt = leds_init_pwm(&pwm_led_red, &pwm_led_green, &pwm_led_blue);
 
-    // initialize the PWM peripherals used to control the LEDs
-    if ((rslt = leds_init_pwm(&pwm_obj_red, &pwm_obj_green, &pwm_obj_blue))!= CY_RSLT_SUCCESS){
-        printf("Error initializing LEDs through PWM peripheral\n\r");
-        CY_ASSERT(0);
+    if (rslt != CY_RSLT_SUCCESS) {
+        printf("Error initializing PWM for RGB LED: %d\n", rslt);
     }
-
-    // start the pwm outputs for these LEDs
-    if ((rslt = cyhal_pwm_start(&pwm_obj_red))!= CY_RSLT_SUCCESS) {
-        printf("Error starting the PWM output for LED red.");
-        CY_ASSERT(0);
-    }
-
-    if ((rslt = cyhal_pwm_start(&pwm_obj_green))!= CY_RSLT_SUCCESS) {
-        printf("Error starting the PWM output for LED green.");
-        CY_ASSERT(0);
-    }
-
-    if ((rslt = cyhal_pwm_start(&pwm_obj_blue))!= CY_RSLT_SUCCESS) {
-        printf("Error starting the PWM output for LED blue.");
-        CY_ASSERT(0);
-    }
+    // //enable buttons as inputs
+     buttons_init();  //NOTE buttons_init calls buttons_init_timer internally
+    // //initialize button debounce timer
+     buttons_init_timer();
+    
 
 }
 
@@ -97,9 +81,49 @@ void app_init_hw(void)
  */
 void app_main(void)
 {
+
+    //Initialize duty cycles to 0
+    cyhal_pwm_set_duty_cycle(&pwm_led_red,   duty_cycle_red, 1000);
+    cyhal_pwm_set_duty_cycle(&pwm_led_green, duty_cycle_green, 1000);
+    cyhal_pwm_set_duty_cycle(&pwm_led_blue,  duty_cycle_blue, 1000);
+    
     while(1)
     {
-        leds_set_frequency_pwm(&pwm_obj_red, &pwm_obj_green, &pwm_obj_blue);
+        /* ADD CODE */
+         if( ECE353_Events.sw1 || ECE353_Events.sw2 || ECE353_Events.sw3) {
+            if(ECE353_Events.sw1) {
+                ECE353_Events.sw1 = 0;
+                if(duty_cycle_red >= 100) {
+                    duty_cycle_red = 0;
+                } else {
+                    duty_cycle_red += 10;
+                }
+                cyhal_pwm_set_duty_cycle(&pwm_led_red, duty_cycle_red, 1000);
+                printf("SW1 Pressed: Red Duty Cycle = %d%%\n", duty_cycle_red);
+            }
+            if(ECE353_Events.sw2) {
+                ECE353_Events.sw2 = 0;
+                if(duty_cycle_green >= 100) {
+                    duty_cycle_green = 0;
+                } else {
+                    duty_cycle_green += 10;
+                }
+                cyhal_pwm_set_duty_cycle(&pwm_led_green,   duty_cycle_green, 1000);
+                printf("SW2 Pressed: Green Duty Cycle = %d%%\n", duty_cycle_green);
+            }
+            if(ECE353_Events.sw3) {
+                ECE353_Events.sw3 = 0;
+                if(duty_cycle_blue >= 100) {
+                    duty_cycle_blue = 0;
+                } else {
+                    duty_cycle_blue += 10;
+                }
+                cyhal_pwm_set_duty_cycle(&pwm_led_blue,   duty_cycle_blue, 1000);
+                printf("SW3 Pressed: Blue Duty Cycle = %d%%\n", duty_cycle_blue);
+            }
+         }
+
+        /* END ADD CODE */
     }
 }
 #endif
