@@ -1034,6 +1034,7 @@ void task_hw05_system_control(void *pvParameters)
     //tracks the accuracy of this board's last guess
     uint8_t last_exact = 0;
     uint8_t last_misplaced = 0;
+    uint8_t opponent_guess[4] = {0};
 
     uint8_t high_score = 0;
 
@@ -1121,17 +1122,27 @@ void task_hw05_system_control(void *pvParameters)
 
 
             case HW05_STATE_WAIT_FOR_GUESS:
-                /*
-                * TODO:
-                * 
-                * - display message "Waiting for opponent to guess..." and no guess UI
-                * - display last entry (if there was one) with feedback, with no UI we
-                * can be more clear with feedback before compressing into the header
-                * - Wait for IPC event with opponent's guess
-                * - When received:
-                *      -> store guess
-                *      -> state = HW05_STATE_EVAL_GUESS
-                */
+                hw05_draw_status_header(high_score, last_exact, last_misplaced);
+                hw05_draw_wait_for_guess_screen();
+
+                // Wait for opponent's guess via IPC
+                while (!ipc_wait_for_guess(100, opponent_guess))
+                {
+                    if (update_dark_mode())
+                    {
+                        hw05_draw_status_header(high_score, last_exact, last_misplaced);
+                        hw05_draw_wait_for_guess_screen();
+                    }
+                }
+
+                task_console_printf(
+                    "Opponent guess received: %u %u %u %u\n\r",
+                    opponent_guess[0],
+                    opponent_guess[1],
+                    opponent_guess[2],
+                    opponent_guess[3]);
+
+                state = HW05_STATE_EVAL_GUESS;
                 break;
 
 
