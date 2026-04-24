@@ -290,41 +290,6 @@ static void hw05_draw_guess_entry_screen(uint8_t high_score)
 }
 
 /**
- * @brief Draw the lower two gameplay rows while waiting for the opponent.
- *
- * Row 1 is intentionally left untouched so the active guess row can remain
- * visible once ENTER_GUESS is implemented.
- */
-static void hw05_draw_wait_for_guess_screen(void)
-{
-    lcd_msg_t msg;
-    uint16_t bg_color = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
-
-    lcd_draw_rectangle(
-        LCD_W / 2,
-        lcd_tile_center_y(LCD_TILE_ROW_NUM_0_3),
-        LCD_W,
-        TILE_H,
-        bg_color,
-        true);
-
-    lcd_draw_rectangle(
-        LCD_W / 2,
-        lcd_tile_center_y(LCD_TILE_ROW_NUM_4_7),
-        LCD_W,
-        TILE_H,
-        bg_color,
-        true);
-
-    msg.command = LCD_CMD_PRINT_MESSAGE;
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "Waiting for");
-    lcd_print_message(&msg, 54, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
-
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "opponent guess...");
-    lcd_print_message(&msg, 18, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
-}
-
-/**
  * @brief Sends discovery requests until either a request or an ACK
  * is received,. when complete, the player who sucessfully sent a 
  * discovery (received an ACK) will be designated as player 1, and 
@@ -651,7 +616,7 @@ void select_cypher(uint8_t cypher_out[4])
         }
 
         /********************************************************
-         * B. Check for SW1 press to confirm selection and move to next tile, or SW3 press to reset high score
+         * B. Check for SW1 press to confirm selection
          ********************************************************/
         EventBits_t events = xEventGroupWaitBits(
             ECE353_RTOS_Events,
@@ -1024,7 +989,6 @@ void task_hw05_system_control(void *pvParameters)
     //tracks the accuracy of this board's last guess
     uint8_t last_exact = 0;
     uint8_t last_misplaced = 0;
-    uint8_t opponent_guess[4] = {0};
 
     uint8_t high_score = 0;
 
@@ -1112,27 +1076,17 @@ void task_hw05_system_control(void *pvParameters)
 
 
             case HW05_STATE_WAIT_FOR_GUESS:
-                hw05_draw_status_header(high_score, last_exact, last_misplaced);
-                hw05_draw_wait_for_guess_screen();
-
-                // Wait for opponent's guess via IPC
-                while (!ipc_wait_for_guess(100, opponent_guess))
-                {
-                    if (update_dark_mode())
-                    {
-                        hw05_draw_status_header(high_score, last_exact, last_misplaced);
-                        hw05_draw_wait_for_guess_screen();
-                    }
-                }
-
-                task_console_printf(
-                    "Opponent guess received: %u %u %u %u\n\r",
-                    opponent_guess[0],
-                    opponent_guess[1],
-                    opponent_guess[2],
-                    opponent_guess[3]);
-
-                state = HW05_STATE_EVAL_GUESS;
+                /*
+                * TODO:
+                * 
+                * - display message "Waiting for opponent to guess..." and no guess UI
+                * - display last entry (if there was one) with feedback, with no UI we
+                * can be more clear with feedback before compressing into the header
+                * - Wait for IPC event with opponent's guess
+                * - When received:
+                *      -> store guess
+                *      -> state = HW05_STATE_EVAL_GUESS
+                */
                 break;
 
 
@@ -1164,6 +1118,7 @@ void task_hw05_system_control(void *pvParameters)
                 *      -> update last_exact, last_misplaced
                 *      -> state = HW05_STATE_CHECK_WIN
                 */
+               task_console_printf("Waiting for feedback (temp)");
                 break;
 
 
@@ -1176,6 +1131,7 @@ void task_hw05_system_control(void *pvParameters)
                 *      -> turn_number++
                 *      -> state = (my_turn ? WAIT_FOR_GUESS : ENTER_GUESS)
                 */
+                task_console_printf("Checking for win (temp)");
                 break;
 
 
