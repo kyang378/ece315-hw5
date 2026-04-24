@@ -33,6 +33,14 @@ QueueHandle_t Queue_LCD;
 static QueueHandle_t Queue_Cap_Touch_Response;
 static QueueHandle_t Queue_EEPROM_Response;
 
+// Tracks the feedback received for this board's most recent guess.
+uint8_t last_exact = 0;
+uint8_t last_misplaced = 0;
+
+// Tracks the feedback this board computes for the opponent's current guess.
+uint8_t opponent_exact = 0;
+uint8_t opponent_misplaced = 0;
+
 bool darkMode;
 
 //will store the most recent guess from this player
@@ -172,7 +180,7 @@ static void hw05_draw_status_header(
     lcd_print_message(&msg, 130, 0);
 
     //print feedback in lower row
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "exact-%1u misplaced-%1u", exact_matches, misplaced_matches);
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "exact-%1u misplaced-%1u", last_exact, last_misplaced);
     lcd_print_message(&msg, 0, 23);
 }
 
@@ -1146,14 +1154,6 @@ void task_hw05_system_control(void *pvParameters)
         //even turns - player 1 guesses
         //odd turns - player 2 guesses
     int turn_number = 0;   
-
-    // Tracks the feedback received for this board's most recent guess.
-    uint8_t last_exact = 0;
-    uint8_t last_misplaced = 0;
-
-    // Tracks the feedback this board computes for the opponent's current guess.
-    uint8_t opponent_exact = 0;
-    uint8_t opponent_misplaced = 0;
 
     uint8_t opponent_guess[4] = {0};
 
