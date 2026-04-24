@@ -1122,6 +1122,10 @@ void task_hw05_system_control(void *pvParameters)
 
 
             case HW05_STATE_WAIT_FOR_GUESS:
+                xEventGroupClearBits(
+                    ECE353_RTOS_Events,
+                    ECE353_EVENT_IPC_GUESS_RECEIVED);
+
                 hw05_draw_status_header(high_score, last_exact, last_misplaced);
                 hw05_draw_wait_for_guess_screen();
 
@@ -1203,7 +1207,22 @@ void task_hw05_system_control(void *pvParameters)
                 *      -> update last_exact, last_misplaced
                 *      -> state = HW05_STATE_CHECK_WIN
                 */
-               task_console_printf("Waiting for feedback (temp)");
+                xEventGroupClearBits(
+                    ECE353_RTOS_Events,
+                    ECE353_EVENT_IPC_FEEDBACK_RECEIVED);
+
+                while (!ipc_wait_for_feedback(100, &last_exact, &last_misplaced))
+                {
+                    /* Feedback should arrive quickly; keep the current guess
+                     * screen on the LCD and simply continue waiting. */
+                }
+
+                task_console_printf(
+                    "Feedback received: exact=%u misplaced=%u\n\r",
+                    last_exact,
+                    last_misplaced);
+
+                state = HW05_STATE_CHECK_WIN;
                 break;
 
 

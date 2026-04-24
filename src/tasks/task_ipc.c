@@ -32,7 +32,6 @@ cyhal_uart_cfg_t IPC_Uart_Config =
 };
 
 uint32_t IPC_Actual_Baud;
-static uint8_t IPC_Last_Guess[4] = {0};
 
 
 /**
@@ -193,7 +192,34 @@ bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]) {
 
     if (guess_out != NULL)
     {
-        memcpy(guess_out, IPC_Last_Guess, sizeof(IPC_Last_Guess));
+        memcpy(guess_out, IPC_Last_Received_Guess, sizeof(IPC_Last_Received_Guess));
+    }
+
+    return true;
+}
+
+bool ipc_wait_for_feedback(uint32_t timeout_ms, uint8_t *exact_out, uint8_t *misplaced_out) {
+    EventBits_t events;
+
+    events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                 ECE353_EVENT_IPC_FEEDBACK_RECEIVED,
+                                 pdTRUE,
+                                 pdFALSE,
+                                 pdMS_TO_TICKS(timeout_ms));
+
+    if ((events & ECE353_EVENT_IPC_FEEDBACK_RECEIVED) == 0)
+    {
+        return false;
+    }
+
+    if (exact_out != NULL)
+    {
+        *exact_out = IPC_Last_Received_Feedback_Exact;
+    }
+
+    if (misplaced_out != NULL)
+    {
+        *misplaced_out = IPC_Last_Received_Feedback_Misplaced;
     }
 
     return true;

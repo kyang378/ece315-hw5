@@ -26,6 +26,8 @@ volatile ipc_packet_t* volatile IPC_Rx_Consume_Buffer = &IPC_Rx_Buffer1;
 
 
 uint8_t IPC_Last_Received_Guess[4] = {0};
+uint8_t IPC_Last_Received_Feedback_Exact = 0;
+uint8_t IPC_Last_Received_Feedback_Misplaced = 0;
 uint16_t IPC_Last_Received_Sequence = 0;
 
 
@@ -126,7 +128,27 @@ void task_ipc_rx(void *param)
 
                     break;
                 }
+                case IPC_CMD_FEEDBACK:
+                {
+                    IPC_Last_Received_Feedback_Exact =
+                        IPC_Rx_Consume_Buffer->payload.feedback.exact;
+                    IPC_Last_Received_Feedback_Misplaced =
+                        IPC_Rx_Consume_Buffer->payload.feedback.misplaced;
+                    IPC_Last_Received_Sequence =
+                        IPC_Rx_Consume_Buffer->sequence_num;
 
+                    printf(
+                        "Received feedback message: exact=%u misplaced=%u\n\r",
+                        IPC_Rx_Consume_Buffer->payload.feedback.exact,
+                        IPC_Rx_Consume_Buffer->payload.feedback.misplaced);
+
+                    // Signal the system control task
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_FEEDBACK_RECEIVED);
+
+                    // always ACK
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+                    break;
+                }
 
                 default:
                 {

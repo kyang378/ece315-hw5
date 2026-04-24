@@ -41,6 +41,7 @@ extern EventGroupHandle_t ECE353_RTOS_Events;
 #define ECE353_EVENT_IPC_INACTIVE_RECEIVED    (1 << 12)
 #define ECE353_EVENT_IPC_STATUS_RECEIVED      (1 << 13)
 #define ECE353_EVENT_IPC_GUESS_RECEIVED       (1 << 14)
+#define ECE353_EVENT_IPC_FEEDBACK_RECEIVED    (1 << 15)        
 
 
 

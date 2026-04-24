@@ -44,7 +44,8 @@ typedef enum {
     IPC_CMD_INACTIVE_PLAYER = 0xC2,
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
-    IPC_CMD_GUESS = 0xC5
+    IPC_CMD_GUESS = 0xC5,
+    IPC_CMD_FEEDBACK = 0xC6
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -67,6 +68,10 @@ typedef enum {
 typedef union {
     ipc_status_t status;
     uint8_t guess[4];
+    struct {
+        uint8_t exact;
+        uint8_t misplaced;
+    } feedback;
 } ipc_payload_t;
 
 /* Use a Packed Structure */
@@ -88,6 +93,10 @@ extern cyhal_uart_cfg_t IPC_Uart_Config;
 extern volatile ipc_packet_t* volatile IPC_Rx_Produce_Buffer;
 extern volatile ipc_packet_t* volatile IPC_Rx_Consume_Buffer;
 extern TaskHandle_t TaskHandle_IPC_Rx;
+extern uint8_t IPC_Last_Received_Guess[4];
+extern uint8_t IPC_Last_Received_Feedback_Exact;
+extern uint8_t IPC_Last_Received_Feedback_Misplaced;
+extern uint16_t IPC_Last_Received_Sequence;
 
 /* Globals used for transmitting data */
 extern QueueHandle_t Queue_IPC_Tx;
@@ -115,7 +124,7 @@ bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);
 bool ipc_send_ack(uint16_t sequence_num);
 bool ipc_wait_for_ack(uint32_t timeout_ms);
 bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]);
-void ipc_store_received_guess(const ipc_packet_t *packet);
+bool ipc_wait_for_feedback(uint32_t timeout_ms, uint8_t *exact_out, uint8_t *misplaced_out);
 
 #endif /* ECE353_FREERTOS */
 
