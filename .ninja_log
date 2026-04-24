@@ -1878,5 +1878,8 @@
 1098	1791	7987707202226879	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493
 90	1011	7987708054570809	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw05/hw05.o	f36517809c4e6375
 1013	1679	7987708063719221	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493
-119	1115	7987710968460249	C:/Users/shawj/ece353/ece353-s26-sjmccoy/build/Debug/local/src/homework/hw05/hw05.o	f36517809c4e6375
-1115	1819	7987710978463799	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	88ccc71bb23fc493
+117	659	7987713277821383	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/local/src/tasks/task_ipc_tx.o	d8fcd4d819a3286e
+92	760	7987713277565985	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/local/src/homework/hw05/hw05.o	87f4d85e9d7873a5
+109	1090	7987713277741020	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/local/src/tasks/task_ipc_rx.o	7d2f36b490aa91e8
+101	1136	7987713277665950	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/local/src/tasks/task_ipc.o	83372f322da779a1
+1136	1622	7987713288003175	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	4c643108da0bf082
