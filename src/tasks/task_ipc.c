@@ -135,6 +135,26 @@ bool ipc_send_guess(uint16_t seq, uint8_t guess[4])
     return true;
 }
 
+bool ipc_send_feedback(uint16_t seq, uint8_t exact, uint8_t misplaced)
+{
+    ipc_packet_t pkt;
+
+    pkt.start_byte   = IPC_PACKET_START;
+    pkt.cmd          = IPC_CMD_FEEDBACK;
+    pkt.sequence_num = seq;
+
+    pkt.payload.feedback.exact     = exact;
+    pkt.payload.feedback.misplaced = misplaced;
+
+    pkt.checksum = calculate_checksum(&pkt);
+
+    if (xQueueSend(Queue_IPC_Tx, &pkt, 0) != pdTRUE)
+        return false;
+
+    return true;
+}
+
+
 
 
 /**
