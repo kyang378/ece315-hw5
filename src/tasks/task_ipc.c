@@ -12,6 +12,7 @@
 #include "cy_result.h"
 #include "cyhal_hw_types.h"
 #include "cyhal_uart.h"
+#include <string.h>
 #include "main.h"
 #include "task_console.h"
 
@@ -31,6 +32,7 @@ cyhal_uart_cfg_t IPC_Uart_Config =
 };
 
 uint32_t IPC_Actual_Baud;
+static uint8_t IPC_Last_Guess[4] = {0};
 
 
 /**
@@ -150,7 +152,27 @@ bool ipc_send_ack(uint16_t sequence_num) {
     return true;
 }
 
+bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]) {
+    EventBits_t events;
 
+    events = xEventGroupWaitBits(ECE353_RTOS_Events,
+                                 ECE353_EVENT_IPC_GUESS_RECEIVED,
+                                 pdTRUE,
+                                 pdFALSE,
+                                 pdMS_TO_TICKS(timeout_ms));
+
+    if ((events & ECE353_EVENT_IPC_GUESS_RECEIVED) == 0)
+    {
+        return false;
+    }
+
+    if (guess_out != NULL)
+    {
+        memcpy(guess_out, IPC_Last_Guess, sizeof(IPC_Last_Guess));
+    }
+
+    return true;
+}
 
 bool ipc_send_active_player(uint16_t sequence_num) {
     ipc_packet_t packet = {
@@ -203,6 +225,7 @@ bool ipc_send_status(uint16_t sequence_num, ipc_status_t status) {
     }
     return true;
 }
+
 
 
 

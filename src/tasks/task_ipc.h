@@ -44,6 +44,7 @@ typedef enum {
     IPC_CMD_INACTIVE_PLAYER = 0xC2,
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
+    IPC_CMD_GUESS = 0xC5
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -65,6 +66,7 @@ typedef enum {
  */
 typedef union {
     ipc_status_t status;
+    uint8_t guess[4];
 } ipc_payload_t;
 
 /* Use a Packed Structure */
@@ -110,6 +112,8 @@ bool ipc_send_inactive_player(uint16_t sequence_num);
 bool ipc_send_status(uint16_t sequence_num, ipc_status_t status);
 bool ipc_send_ack(uint16_t sequence_num);
 bool ipc_wait_for_ack(uint32_t timeout_ms);
+bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]);
+void ipc_store_received_guess(const ipc_packet_t *packet);
 
 #endif /* ECE353_FREERTOS */
 
