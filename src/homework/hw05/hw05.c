@@ -261,6 +261,35 @@ static void hw05_draw_cypher_entry_screen(uint8_t high_score)
 }
 
 /**
+ * @brief draw the guess-entry screen using the shared LCD layout
+ * 
+ * @param high_score  the high score to be displayed at the top
+ */
+static void hw05_draw_guess_entry_screen(uint8_t high_score)
+{
+    static const uint8_t guess_defaults[4] = {0, 0, 0, 0};
+    static const uint8_t keypad_top[4] = {0, 1, 2, 3};
+    static const uint8_t keypad_bottom[4] = {4, 5, 6, 7};
+
+    uint16_t bg = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+
+    lcd_clear_screen(bg);
+
+    hw05_draw_status_header(high_score, 0, 0);
+
+    // Guess row uses BLUE foreground to differentiate from cypher entry
+    hw05_draw_tile_row(LCD_TILE_ROW_CYPHER, guess_defaults,
+                       LCD_COLOR_BLUE, bg, 0);
+
+    // Keypad rows (same as cypher entry)
+    hw05_draw_tile_row(LCD_TILE_ROW_NUM_0_3, keypad_top,
+                       LCD_COLOR_GREEN, bg, -1);
+
+    hw05_draw_tile_row(LCD_TILE_ROW_NUM_4_7, keypad_bottom,
+                       LCD_COLOR_GREEN, bg, -1);
+}
+
+/**
  * @brief Draw the lower two gameplay rows while waiting for the opponent.
  *
  * Row 1 is intentionally left untouched so the active guess row can remain
@@ -354,6 +383,41 @@ static bool discover_board(uint16_t *sequence_num, bool *player1)
 
     return true;
 }
+
+/**
+ * @brief Sends the guess data from this board to the opponent
+ * 
+ * @param sequence_num the currrent sequence number 
+ * @param guess the guess to be transmitted and evaluated
+ */
+static void hw05_send_guess(uint16_t *sequence_num, uint8_t guess[4])
+{
+    bool acked = false;
+
+    while (!acked)
+    {
+        xEventGroupClearBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_ACK_RECEIVED);
+
+        if (!ipc_send_guess(*sequence_num, guess))
+        {
+            task_console_printf("Failed to queue guess (seq=%u)\n\r", *sequence_num);
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        acked = ipc_wait_for_ack(HW05_READY_STATUS_ACK_TIMEOUT_MS);
+
+        if (!acked)
+        {
+            task_console_printf("Guess ACK timeout (seq=%u), retrying\n\r", *sequence_num);
+            (*sequence_num)++;
+        }
+    }
+
+    task_console_printf("Guess sent and ACKed (seq=%u)\n\r", *sequence_num);
+    (*sequence_num)++;
+}
+
 
 /**
  * @brief This helper function will take an x and y coordinate 
@@ -648,6 +712,125 @@ void select_cypher(uint8_t cypher_out[4])
 }
 
 /**
+ * @brief Lets the user enter a guess using their touchscreen
+ * 
+ * @param guess_out the array to store the guess into
+ * @param high_score the high score to be displayed on the top
+ */
+void enter_guess(uint8_t guess_out[4], uint8_t high_score)
+{
+    lcd_msg_t msg;
+
+    // Initial draw
+    hw05_draw_guess_entry_screen(high_score);
+    task_console_printf("Enter your guess\n\r");
+
+    int currGuessTile = 0;
+    int currSelectTile = -1;
+
+    while (currGuessTile < 4)
+    {
+        /********************************************************
+         * A. Check for dark/light mode change
+         ********************************************************/
+        if (update_dark_mode())
+        {
+            // Redraw entire screen
+            hw05_draw_guess_entry_screen(high_score);
+
+            // Restore digits already entered
+            for (int i = 0; i < currGuessTile; i++)
+            {
+                msg.command = LCD_CMD_DRAW_TILE;
+                msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                msg.payload.tile.col = i;
+                msg.payload.tile.number = guess_out[i];
+                msg.payload.tile.color_fg = LCD_COLOR_BLUE;
+                msg.payload.tile.color_bg = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+                master_mind_handle_msg(&msg);
+            }
+
+            // Restore highlight on keypad tile
+            if (currSelectTile >= 0)
+            {
+                switchSelectTiles(-1, currSelectTile);
+            }
+        }
+
+        /********************************************************
+         * B. Touchscreen input
+         ********************************************************/
+        uint16_t x, y;
+        bool touched = system_sensors_get_cap_touch(Queue_Cap_Touch_Response, &x, &y);
+
+        if (touched)
+        {
+            int touched_tile = coords_to_tile(x, y);
+
+            if (touched_tile >= 0 && touched_tile <= 7)
+            {
+                if (currSelectTile == -1)
+                {
+                    switchSelectTiles(-1, touched_tile);
+                    currSelectTile = touched_tile;
+                }
+                else if (touched_tile != currSelectTile)
+                {
+                    switchSelectTiles(currSelectTile, touched_tile);
+                    currSelectTile = touched_tile;
+                }
+            }
+        }
+
+        /********************************************************
+         * C. Button input (SW1 confirms digit)
+         ********************************************************/
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_SW1_PRESSED,
+            pdTRUE,
+            pdFALSE,
+            pdMS_TO_TICKS(20)
+        );
+
+        if (events & ECE353_EVENT_SW1_PRESSED)
+        {
+            if (currSelectTile >= 0)
+            {
+                guess_out[currGuessTile] = currSelectTile;
+
+                // Draw confirmed digit in BLUE
+                msg.command = LCD_CMD_DRAW_TILE;
+                msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                msg.payload.tile.col = currGuessTile;
+                msg.payload.tile.number = currSelectTile;
+                msg.payload.tile.color_fg = LCD_COLOR_BLUE;
+                msg.payload.tile.color_bg = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+                master_mind_handle_msg(&msg);
+
+                currGuessTile++;
+
+                // Highlight next guess tile
+                if (currGuessTile < 4)
+                {
+                    msg.command = LCD_CMD_DRAW_TILE_INVERTED;
+                    msg.payload.tile.row = LCD_TILE_ROW_CYPHER;
+                    msg.payload.tile.col = currGuessTile;
+                    msg.payload.tile.number = 0;
+                    msg.payload.tile.color_fg = LCD_COLOR_BLUE;
+                    msg.payload.tile.color_bg = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+                    master_mind_handle_msg(&msg);
+                }
+            }
+        }
+    }
+
+    task_console_printf("Guess complete: %d %d %d %d\n\r",
+                        guess_out[0], guess_out[1],
+                        guess_out[2], guess_out[3]);
+}
+
+/**
  * @brief Sends the one-time initialization status indicating this board is ready.
  * 
  * This is part of the startup handshake after both boards finish selecting
@@ -830,7 +1013,9 @@ void task_hw05_system_control(void *pvParameters)
     uint16_t sequence_num = 0;
     bool player1 = false;
     darkMode = true; //default to dark mode
-    hw05_game_state_t state = HW05_STATE_INIT;
+    hw05_game_state_t state = HW05_STATE_INIT; //set initial state
+
+    uint8_t my_guess[4] = {-1}; //will store the most recent guess from this player
     // increments after every guess from either player
         //even turns - player 1 guesses
         //odd turns - player 2 guesses
@@ -917,6 +1102,12 @@ void task_hw05_system_control(void *pvParameters)
                 *      -> send guess via IPC
                 *      -> state = HW05_STATE_WAIT_FOR_FEEDBACK
                 */
+                //Let user enter guess
+                enter_guess(my_guess, high_score);
+                //send the guess to the other board
+                hw05_send_guess(&sequence_num, my_guess);
+                //move to next state, waiting for other board's feedback
+                state = HW05_STATE_WAIT_FOR_FEEDBACK;
                 break;
 
 

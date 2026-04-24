@@ -24,6 +24,11 @@ static volatile ipc_packet_t IPC_Rx_Buffer1;
 volatile ipc_packet_t* volatile IPC_Rx_Produce_Buffer = &IPC_Rx_Buffer0;
 volatile ipc_packet_t* volatile IPC_Rx_Consume_Buffer = &IPC_Rx_Buffer1;
 
+
+uint8_t IPC_Last_Received_Guess[4] = {0};
+uint16_t IPC_Last_Received_Sequence = 0;
+
+
 /**
  * @brief
  *
@@ -103,6 +108,26 @@ void task_ipc_rx(void *param)
                     ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
                     break;
                 }
+                case IPC_CMD_GUESS:
+                {
+                    // Copy the guess out of the consume buffer
+                    memcpy(IPC_Last_Received_Guess,
+                        (const void *)IPC_Rx_Consume_Buffer->payload.guess,
+                        4);
+
+                    // Save sequence number for debugging or ACK tracking
+                    IPC_Last_Received_Sequence = IPC_Rx_Consume_Buffer->sequence_num;
+
+                    // Signal the system control task
+                    xEventGroupSetBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_GUESS_RECEIVED);
+
+                    // Always ACK
+                    ipc_send_ack(IPC_Rx_Consume_Buffer->sequence_num);
+
+                    break;
+                }
+
+
                 default:
                 {
                     printf("Received unknown/unsupported message type. \n\r");
