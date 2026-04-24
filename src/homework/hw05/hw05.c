@@ -368,78 +368,6 @@ static void hw05_draw_wait_for_guess_screen(void)
 }
 
 /**
- * @brief Draw the start prompt once both boards are ready.
- */
-static void hw05_draw_start_prompt_screen(uint8_t high_score)
-{
-    lcd_msg_t msg;
-    uint16_t bg_color = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
-    static const uint8_t guess_defaults[4] = {0, 0, 0, 0};
-
-    lcd_clear_screen(bg_color);
-    hw05_draw_status_header(high_score, 0, 0);
-
-    hw05_draw_tile_row(
-        LCD_TILE_ROW_CYPHER,
-        guess_defaults,
-        LCD_COLOR_BLUE,
-        bg_color,
-        0);
-
-    lcd_draw_rectangle(
-        LCD_W / 2,
-        lcd_tile_center_y(LCD_TILE_ROW_NUM_0_3),
-        LCD_W,
-        TILE_H,
-        bg_color,
-        true);
-
-    lcd_draw_rectangle(
-        LCD_W / 2,
-        lcd_tile_center_y(LCD_TILE_ROW_NUM_4_7),
-        LCD_W,
-        TILE_H,
-        bg_color,
-        true);
-
-    msg.command = LCD_CMD_PRINT_MESSAGE;
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "Player 1 starts");
-    lcd_print_message(&msg, 34, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
-
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "Press SW1");
-    lcd_print_message(&msg, 74, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
-}
-
-/**
- * @brief Wait for the local player to begin gameplay with SW1.
- */
-static void hw05_wait_for_start_press(uint8_t high_score)
-{
-    xEventGroupClearBits(ECE353_RTOS_Events, ECE353_EVENT_SW1_PRESSED);
-    hw05_draw_start_prompt_screen(high_score);
-
-    while (1)
-    {
-        EventBits_t events = xEventGroupWaitBits(
-            ECE353_RTOS_Events,
-            ECE353_EVENT_SW1_PRESSED,
-            pdTRUE,
-            pdFALSE,
-            pdMS_TO_TICKS(50));
-
-        if (events & ECE353_EVENT_SW1_PRESSED)
-        {
-            break;
-        }
-
-        if (update_dark_mode())
-        {
-            hw05_draw_start_prompt_screen(high_score);
-        }
-    }
-}
-
-/**
  * @brief Draw the end-of-game screen.
  */
 static void hw05_draw_game_over_screen(
@@ -1263,8 +1191,9 @@ void task_hw05_system_control(void *pvParameters)
     high_score = hw05_read_high_score();
     wait_for_other_player_ready(&high_score);
 
-    task_console_printf("Both players ready. Press SW1 to begin gameplay.\n\r");
-    hw05_wait_for_start_press(high_score);
+    task_console_printf("Both players ready — starting game!\n\r");
+    task_console_printf("Player 1 guesses first.\n\r");
+    hw05_draw_status_header(high_score, 0, 0);
 
     //enter core loop
     while (true)
@@ -1539,7 +1468,7 @@ void task_hw05_system_control(void *pvParameters)
                     send_ready_status(&sequence_num);
                     high_score = hw05_read_high_score();
                     wait_for_other_player_ready(&high_score);
-                    hw05_wait_for_start_press(high_score);
+                    hw05_draw_status_header(high_score, 0, 0);
                     state = HW05_STATE_INIT;
                 }
 
