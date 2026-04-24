@@ -1147,9 +1147,14 @@ void task_hw05_system_control(void *pvParameters)
         //odd turns - player 2 guesses
     int turn_number = 0;   
 
-    //tracks the accuracy of this board's last guess
+    // Tracks the feedback received for this board's most recent guess.
     uint8_t last_exact = 0;
     uint8_t last_misplaced = 0;
+
+    // Tracks the feedback this board computes for the opponent's current guess.
+    uint8_t opponent_exact = 0;
+    uint8_t opponent_misplaced = 0;
+
     uint8_t opponent_guess[4] = {0};
 
     // tracks game over status
@@ -1286,19 +1291,18 @@ void task_hw05_system_control(void *pvParameters)
                 * TODO:
                 * - Compare opponent's guess to my cypher
                 * - Compute exact & misplaced
-                * - Save into last_exact, last_misplaced
+                * - Save into opponent_exact, opponent_misplaced
                 * - state = HW05_STATE_SEND_FEEDBACK
                 */
+                opponent_exact = 0;
+                opponent_misplaced = 0;
 
-                last_exact = 0;
-                last_misplaced = 0;
-
-                // evaluate
+                // Evaluate the opponent's guess against my cypher.
                 for (int i = 0; i < 4; i++)
                 {
                     if (opponent_guess[i] == my_cypher[i])
                     {
-                        last_exact++;
+                        opponent_exact++;
                     }
                     else
                     {
@@ -1306,7 +1310,7 @@ void task_hw05_system_control(void *pvParameters)
                         {
                             if (opponent_guess[i] == my_cypher[j])
                             {
-                                last_misplaced++;
+                                opponent_misplaced++;
                                 break;
                             }
                         }
@@ -1321,8 +1325,7 @@ void task_hw05_system_control(void *pvParameters)
 
             case HW05_STATE_SEND_FEEDBACK:
             {
-                // last_exact and last_misplaced were computed in EVAL_GUESS
-                hw05_send_feedback(&sequence_num, last_exact, last_misplaced);
+                hw05_send_feedback(&sequence_num, opponent_exact, opponent_misplaced);
 
                 state = HW05_STATE_CHECK_WIN;
                 break;
@@ -1359,10 +1362,11 @@ void task_hw05_system_control(void *pvParameters)
 
             case HW05_STATE_CHECK_WIN:
             {
-                // 1. Check if the guess was correct
-                if (last_exact == 4)
+                uint8_t exact_matches = my_turn ? last_exact : opponent_exact;
+
+                // 1. Check if the guess that was just resolved was correct.
+                if (exact_matches == 4)
                 {
-                    game_over = true;
                     state = HW05_STATE_GAME_OVER;
                     break;
                 }
@@ -1462,6 +1466,8 @@ void task_hw05_system_control(void *pvParameters)
                     turn_number = 0;
                     last_exact = 0;
                     last_misplaced = 0;
+                    opponent_exact = 0;
+                    opponent_misplaced = 0;
                     game_over = false;
 
                     select_cypher(my_cypher);
