@@ -1143,6 +1143,32 @@ void task_hw05_system_control(void *pvParameters)
                 * - Save into last_exact, last_misplaced
                 * - state = HW05_STATE_SEND_FEEDBACK
                 */
+
+                last_exact = 0;
+                last_misplaced = 0;
+
+                // evaluate
+                for (int i = 0; i < 4; i++)
+                {
+                    if (opponent_guess[i] == my_cypher[i])
+                    {
+                        last_exact++;
+                    }
+                    else
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            if (opponent_guess[i] == my_cypher[j])
+                            {
+                                last_misplaced++;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                state = HW05_STATE_SEND_FEEDBACK;
+
                 break;
 
 
@@ -1152,6 +1178,9 @@ void task_hw05_system_control(void *pvParameters)
                 * - Send feedback to opponent via IPC
                 * - state = HW05_STATE_CHECK_WIN
                 */
+
+                //send feedback via IPC
+                bool acked = false;
                 break;
 
 
