@@ -125,6 +125,8 @@ bool ipc_send_ack(uint16_t sequence_num);
 bool ipc_wait_for_ack(uint32_t timeout_ms);
 bool ipc_wait_for_guess(uint32_t timeout_ms, uint8_t guess_out[4]);
 bool ipc_wait_for_feedback(uint32_t timeout_ms, uint8_t *exact_out, uint8_t *misplaced_out);
+bool ipc_send_feedback(uint16_t seq, uint8_t exact, uint8_t misplaced);
+bool ipc_send_guess(uint16_t seq, uint8_t guess[4]);
 
 #endif /* ECE353_FREERTOS */
 

@@ -429,6 +429,46 @@ static void hw05_send_guess(uint16_t *sequence_num, uint8_t guess[4])
 }
 
 
+
+/**
+ * @brief Sends the most recent guess evaluation to the other board
+ * 
+ * @param sequence_num the current sequence number
+ * @param exact the number of tiles exactly correct in the previous guess
+ * @param misplaced the number of tiles misplaced in the previous guess
+ */
+static void hw05_send_feedback(uint16_t *sequence_num,
+                               uint8_t exact,
+                               uint8_t misplaced)
+{
+    bool acked = false;
+
+    while (!acked)
+    {
+        xEventGroupClearBits(ECE353_RTOS_Events, ECE353_EVENT_IPC_ACK_RECEIVED);
+
+        if (!ipc_send_feedback(*sequence_num, exact, misplaced))
+        {
+            task_console_printf("Failed to queue feedback (seq=%u)\n\r", *sequence_num);
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        acked = ipc_wait_for_ack(HW05_READY_STATUS_ACK_TIMEOUT_MS);
+
+        if (!acked)
+        {
+            task_console_printf("Feedback ACK timeout (seq=%u), retrying\n\r", *sequence_num);
+            (*sequence_num)++;
+        }
+    }
+
+    task_console_printf("Feedback sent and ACKed (seq=%u)\n\r", *sequence_num);
+    (*sequence_num)++;
+}
+
+
+
 /**
  * @brief This helper function will take an x and y coordinate 
  * and convert it to the relevant tile selected. Note that 
@@ -819,6 +859,7 @@ void enter_guess(uint8_t guess_out[4], uint8_t high_score)
                 master_mind_handle_msg(&msg);
 
                 currGuessTile++;
+                currSelectTile = -1;
 
                 // Highlight next guess tile
                 if (currGuessTile < 4)
@@ -1092,6 +1133,7 @@ void task_hw05_system_control(void *pvParameters)
         switch (state)
         {
             case HW05_STATE_INIT:
+            {
                 /*
                 * Conditions:
                 * - Player 1 always starts
@@ -1101,9 +1143,11 @@ void task_hw05_system_control(void *pvParameters)
                 state = my_turn ? HW05_STATE_ENTER_GUESS
                                 : HW05_STATE_WAIT_FOR_GUESS;
                 break;
+            }
 
 
             case HW05_STATE_ENTER_GUESS:
+            {
                 /*
                 * TODO:
                 * - Draw guess entry UI
@@ -1119,25 +1163,30 @@ void task_hw05_system_control(void *pvParameters)
                 //move to next state, waiting for other board's feedback
                 state = HW05_STATE_WAIT_FOR_FEEDBACK;
                 break;
+            }
 
 
             case HW05_STATE_WAIT_FOR_GUESS:
-                xEventGroupClearBits(
-                    ECE353_RTOS_Events,
-                    ECE353_EVENT_IPC_GUESS_RECEIVED);
-
-                hw05_draw_status_header(high_score, last_exact, last_misplaced);
+            {
+                // Always draw the wait screen immediately
                 hw05_draw_wait_for_guess_screen();
+                hw05_draw_status_header(high_score, last_exact, last_misplaced);
 
-                // Wait for opponent's guess via IPC
+                // Now loop until a guess arrives
                 while (!ipc_wait_for_guess(100, opponent_guess))
                 {
+                    // If dark/light mode changed, redraw
                     if (update_dark_mode())
                     {
-                        hw05_draw_status_header(high_score, last_exact, last_misplaced);
                         hw05_draw_wait_for_guess_screen();
+                        hw05_draw_status_header(high_score, last_exact, last_misplaced);
                     }
                 }
+
+                // Guess received → move to evaluation
+                state = HW05_STATE_EVAL_GUESS;
+                break;
+
 
                 task_console_printf(
                     "Opponent guess received: %u %u %u %u\n\r",
@@ -1148,9 +1197,11 @@ void task_hw05_system_control(void *pvParameters)
 
                 state = HW05_STATE_EVAL_GUESS;
                 break;
+            }
 
 
             case HW05_STATE_EVAL_GUESS:
+            {
                 /*
                 * TODO:
                 * - Compare opponent's guess to my cypher
@@ -1185,18 +1236,18 @@ void task_hw05_system_control(void *pvParameters)
                 state = HW05_STATE_SEND_FEEDBACK;
 
                 break;
+            }
 
 
             case HW05_STATE_SEND_FEEDBACK:
-                /*
-                * TODO:
-                * - Send feedback to opponent via IPC
-                * - state = HW05_STATE_CHECK_WIN
-                */
+            {
+                // last_exact and last_misplaced were computed in EVAL_GUESS
+                hw05_send_feedback(&sequence_num, last_exact, last_misplaced);
 
-                //send feedback via IPC
-                bool acked = false;
+                state = HW05_STATE_CHECK_WIN;
                 break;
+            }
+            
 
 
             case HW05_STATE_WAIT_FOR_FEEDBACK:
@@ -1227,22 +1278,41 @@ void task_hw05_system_control(void *pvParameters)
 
 
             case HW05_STATE_CHECK_WIN:
-                /*
-                * TODO:
-                * - If last_exact == 4:
-                *      -> state = HW05_STATE_GAME_OVER
-                * - Else:
-                *      -> turn_number++
-                *      -> state = (my_turn ? WAIT_FOR_GUESS : ENTER_GUESS)
-                */
-                task_console_printf("Checking for win (temp)");
+            {
+                // 1. Check if the guess was correct
+                if (last_exact == 4)
+                {
+                    state = HW05_STATE_GAME_OVER;
+                    break;
+                }
+
+                // 2. Otherwise, move to next turn
+                turn_number++;
+
+                bool my_turn =
+                    (player1 && (turn_number % 2 == 0)) ||
+                    (!player1 && (turn_number % 2 == 1));
+
+                if (my_turn)
+                {
+                    // My turn to guess
+                    state = HW05_STATE_ENTER_GUESS;
+                }
+                else
+                {
+                    // Opponent's turn to guess
+                    state = HW05_STATE_WAIT_FOR_GUESS;
+                }
+
                 break;
+            }
+
 
 
             case HW05_STATE_GAME_OVER:
                 /*
                 * TODO:
-                * - Display win/lose
+                * - Display win/lose, prompt restart
                 * - Update high score if needed
                 * - Wait for SW1 to restart
                 * - Reset turn_number = 0
