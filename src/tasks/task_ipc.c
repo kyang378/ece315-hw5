@@ -110,6 +110,31 @@ bool ipc_send_discovery(uint16_t sequence_num) {
     return true;
 }
 
+bool ipc_send_guess(uint16_t seq, uint8_t guess[4])
+{
+    ipc_packet_t pkt;
+
+    pkt.start_byte   = IPC_PACKET_START;
+    pkt.cmd          = IPC_CMD_GUESS;
+    pkt.sequence_num = seq;
+
+    // Copy the 4-digit guess into the payload
+    memcpy(pkt.payload.guess, guess, 4);
+
+    // Compute checksum (same method used elsewhere)
+    pkt.checksum = calculate_checksum(&pkt);
+
+    // Queue the packet for transmission
+    if (xQueueSend(Queue_IPC_Tx, &pkt, 0) != pdTRUE)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+
+
 /**
  * @brief Waits for an acknowledgement from an external board
  * 
