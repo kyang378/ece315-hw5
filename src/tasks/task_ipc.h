@@ -45,7 +45,6 @@ typedef enum {
     IPC_CMD_STATUS = 0xC3,
     IPC_CMD_ACK = 0xC4,
     IPC_CMD_GUESS = 0xC5
-    IPC_CMD_GUESS = 0xC5
 } ipc_cmd_t;
 
 /* IPC Error Types 
@@ -67,7 +66,6 @@ typedef enum {
  */
 typedef union {
     ipc_status_t status;
-    uint8_t guess[4];
     uint8_t guess[4];
 } ipc_payload_t;
 
