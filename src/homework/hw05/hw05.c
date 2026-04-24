@@ -290,6 +290,51 @@ static void hw05_draw_guess_entry_screen(uint8_t high_score)
 }
 
 /**
+ * @brief Draw the gameplay wait screen while waiting for the opponent.
+ *
+ * The top row remains the guess row, so it is redrawn in blue to match the
+ * rest of the gameplay UI and avoid confusion with the local cypher color.
+ */
+static void hw05_draw_wait_for_guess_screen(void)
+{
+    lcd_msg_t msg;
+    uint16_t bg_color = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+    static const uint8_t guess_defaults[4] = {0, 0, 0, 0};
+
+    // redraw the guess row with a blue foreground to indicate 
+    // it's now our guess about the opponent's cypher
+    hw05_draw_tile_row(
+        LCD_TILE_ROW_CYPHER,
+        guess_defaults,
+        LCD_COLOR_BLUE,
+        bg_color,
+        0);
+
+    lcd_draw_rectangle(
+        LCD_W / 2,
+        lcd_tile_center_y(LCD_TILE_ROW_NUM_0_3),
+        LCD_W,
+        TILE_H,
+        bg_color,
+        true);
+
+    lcd_draw_rectangle(
+        LCD_W / 2,
+        lcd_tile_center_y(LCD_TILE_ROW_NUM_4_7),
+        LCD_W,
+        TILE_H,
+        bg_color,
+        true);
+
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "Waiting for");
+    lcd_print_message(&msg, 54, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
+
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "opponent guess...");
+    lcd_print_message(&msg, 18, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
+}
+
+/**
  * @brief Sends discovery requests until either a request or an ACK
  * is received,. when complete, the player who sucessfully sent a 
  * discovery (received an ACK) will be designated as player 1, and 
