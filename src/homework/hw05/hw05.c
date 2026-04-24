@@ -34,6 +34,10 @@ static QueueHandle_t Queue_Cap_Touch_Response;
 static QueueHandle_t Queue_EEPROM_Response;
 
 bool darkMode;
+
+//will store the most recent guess from this player
+//9 is default since it can't be entered in the game
+uint8_t my_guess[4] = {9}; 
 /*****************************************************************************/
 /* Function Definitions                                                      */
 /*****************************************************************************/
@@ -152,9 +156,24 @@ static void hw05_draw_status_header(
     lcd_print_message(&msg, 0, 0);
 
     msg.command = LCD_CMD_PRINT_MESSAGE;
-    //TODO maybe try to print exact_matches in green and misplaced in yellos? 
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "Last: %1u %1u", exact_matches, misplaced_matches);
+    
+
+    //print last guess in top row
+    if(my_guess[0] == 9) {
+        snprintf(msg.payload.message, sizeof(msg.payload.message),
+                "Last: XXXX");
+    } else {
+        snprintf(msg.payload.message, sizeof(msg.payload.message),
+         "Last: %u%u%u%u",
+         my_guess[0], my_guess[1],
+         my_guess[2], my_guess[3]);
+    }
+    
     lcd_print_message(&msg, 130, 0);
+
+    //print feedback in lower row
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "exact-%1u misplaced-%1u", exact_matches, misplaced_matches);
+    lcd_print_message(&msg, 0, 23);
 }
 
 /**
@@ -855,6 +874,7 @@ void select_cypher(uint8_t cypher_out[4])
                 addToCypher(currSelectTile, currcypherTile);
 
                 currcypherTile++;
+                
 
                 // Highlight next cypher tile (if any)
                 if (currcypherTile < 4)
@@ -986,7 +1006,7 @@ void enter_guess(uint8_t guess_out[4], uint8_t high_score)
                 master_mind_handle_msg(&msg);
 
                 currGuessTile++;
-                currSelectTile = -1;
+                
 
                 // Highlight next guess tile
                 if (currGuessTile < 4)
@@ -1193,7 +1213,7 @@ void task_hw05_system_control(void *pvParameters)
     darkMode = true; //default to dark mode
     hw05_game_state_t state = HW05_STATE_INIT; //set initial state
 
-    uint8_t my_guess[4] = {-1}; //will store the most recent guess from this player
+    
     // increments after every guess from either player
         //even turns - player 1 guesses
         //odd turns - player 2 guesses
