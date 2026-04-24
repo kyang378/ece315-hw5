@@ -290,15 +290,25 @@ static void hw05_draw_guess_entry_screen(uint8_t high_score)
 }
 
 /**
- * @brief Draw the lower two gameplay rows while waiting for the opponent.
+ * @brief Draw the gameplay wait screen while waiting for the opponent.
  *
- * Row 1 is intentionally left untouched so the active guess row can remain
- * visible once ENTER_GUESS is implemented.
+ * The top row remains the guess row, so it is redrawn in blue to match the
+ * rest of the gameplay UI and avoid confusion with the local cypher color.
  */
 static void hw05_draw_wait_for_guess_screen(void)
 {
     lcd_msg_t msg;
     uint16_t bg_color = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+    static const uint8_t guess_defaults[4] = {0, 0, 0, 0};
+
+    // redraw the guess row with a blue foreground to indicate 
+    // it's now our guess about the opponent's cypher
+    hw05_draw_tile_row(
+        LCD_TILE_ROW_CYPHER,
+        guess_defaults,
+        LCD_COLOR_BLUE,
+        bg_color,
+        0);
 
     lcd_draw_rectangle(
         LCD_W / 2,

@@ -1791,3 +1791,5 @@
 6204	6422	7987642889700240	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/libraries_shared/mtb-pdl-cat1/drivers/third_party/ethernet/src/edd_rx.o	232562e15ea85321
 5723	6496	7987642884883847	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/libraries_shared/mtb-pdl-cat1/drivers/source/cy_sysclk.o	4d4dae6f1a4ab577
 6496	7401	7987642892621494	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	4c643108da0bf082
+99	1089	7987647330427815	C:/ece315-hw5/ece353-s26-kyang378/build/Debug/local/src/homework/hw05/hw05.o	87f4d85e9d7873a5
+1089	1549	7987647340312353	build/ece353/Debug/mtb-example-ce240786-empty-app.elf	4c643108da0bf082
