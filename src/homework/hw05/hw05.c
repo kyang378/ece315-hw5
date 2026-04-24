@@ -223,6 +223,20 @@ static void hw05_reset_high_score(void)
 }
 
 /**
+ * @brief Write a new high score to EEPROM.
+ */
+static void hw05_write_high_score(uint8_t high_score)
+{
+    if (!system_sensors_eeprom_write(
+            Queue_EEPROM_Response,
+            HW05_EEPROM_HIGH_SCORE_ADDR,
+            high_score))
+    {
+        task_console_printf("EEPROM high score write failed\n\r");
+    }
+}
+
+/**
  * @brief Handle SW3 high-score reset while still in the pre-game setup phase.
  */
 static void hw05_handle_pre_game_reset(
@@ -330,13 +344,126 @@ static void hw05_draw_wait_for_guess_screen(void)
     snprintf(msg.payload.message, sizeof(msg.payload.message), "Waiting for");
     lcd_print_message(&msg, 54, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
 
-    snprintf(msg.payload.message, sizeof(msg.payload.message), "opponent guess...");
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "opponent's guess...");
     lcd_print_message(&msg, 18, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
 }
 
 /**
+ * @brief Draw the start prompt once both boards are ready.
+ */
+static void hw05_draw_start_prompt_screen(uint8_t high_score)
+{
+    lcd_msg_t msg;
+    uint16_t bg_color = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+    static const uint8_t guess_defaults[4] = {0, 0, 0, 0};
+
+    lcd_clear_screen(bg_color);
+    hw05_draw_status_header(high_score, 0, 0);
+
+    hw05_draw_tile_row(
+        LCD_TILE_ROW_CYPHER,
+        guess_defaults,
+        LCD_COLOR_BLUE,
+        bg_color,
+        0);
+
+    lcd_draw_rectangle(
+        LCD_W / 2,
+        lcd_tile_center_y(LCD_TILE_ROW_NUM_0_3),
+        LCD_W,
+        TILE_H,
+        bg_color,
+        true);
+
+    lcd_draw_rectangle(
+        LCD_W / 2,
+        lcd_tile_center_y(LCD_TILE_ROW_NUM_4_7),
+        LCD_W,
+        TILE_H,
+        bg_color,
+        true);
+
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "Player 1 starts");
+    lcd_print_message(&msg, 34, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
+
+    snprintf(msg.payload.message, sizeof(msg.payload.message), "Press SW1");
+    lcd_print_message(&msg, 74, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
+}
+
+/**
+ * @brief Wait for the local player to begin gameplay with SW1.
+ */
+static void hw05_wait_for_start_press(uint8_t high_score)
+{
+    xEventGroupClearBits(ECE353_RTOS_Events, ECE353_EVENT_SW1_PRESSED);
+    hw05_draw_start_prompt_screen(high_score);
+
+    while (1)
+    {
+        EventBits_t events = xEventGroupWaitBits(
+            ECE353_RTOS_Events,
+            ECE353_EVENT_SW1_PRESSED,
+            pdTRUE,
+            pdFALSE,
+            pdMS_TO_TICKS(50));
+
+        if (events & ECE353_EVENT_SW1_PRESSED)
+        {
+            break;
+        }
+
+        if (update_dark_mode())
+        {
+            hw05_draw_start_prompt_screen(high_score);
+        }
+    }
+}
+
+/**
+ * @brief Draw the end-of-game screen.
+ */
+static void hw05_draw_game_over_screen(
+    bool i_won,
+    uint8_t high_score,
+    uint8_t exact_matches,
+    uint8_t misplaced_matches,
+    uint8_t guess_count,
+    bool new_high_score)
+{
+    lcd_msg_t msg;
+    uint16_t bg = darkMode ? LCD_COLOR_BLACK : LCD_COLOR_WHITE;
+
+    lcd_clear_screen(bg);
+    hw05_draw_status_header(high_score, exact_matches, misplaced_matches);
+
+    msg.command = LCD_CMD_PRINT_MESSAGE;
+    snprintf(
+        msg.payload.message,
+        sizeof(msg.payload.message),
+        i_won ? "You Win!" : "You Lose!");
+    lcd_print_message(&msg, 82, lcd_tile_top_y(LCD_TILE_ROW_CYPHER) + 12);
+
+    snprintf(
+        msg.payload.message,
+        sizeof(msg.payload.message),
+        "Guesses: %02u",
+        guess_count);
+    lcd_print_message(&msg, 76, lcd_tile_top_y(LCD_TILE_ROW_NUM_0_3) + 12);
+
+    if (new_high_score)
+    {
+        snprintf(
+            msg.payload.message,
+            sizeof(msg.payload.message),
+            "New Best!");
+        lcd_print_message(&msg, 78, lcd_tile_top_y(LCD_TILE_ROW_NUM_4_7) + 12);
+    }
+}
+
+/**
  * @brief Sends discovery requests until either a request or an ACK
- * is received,. when complete, the player who sucessfully sent a 
+ * is received. when complete, the player who sucessfully sent a 
  * discovery (received an ACK) will be designated as player 1, and 
  * the player who received the discovery (sent an ACK) will be 
  * player 2
@@ -1077,6 +1204,12 @@ void task_hw05_system_control(void *pvParameters)
     uint8_t last_misplaced = 0;
     uint8_t opponent_guess[4] = {0};
 
+    // tracks game over status
+    bool game_over = false;
+    bool game_over_i_won = false;
+    bool game_over_new_high_score = false;
+    uint8_t game_over_guess_count = 0;
+
     uint8_t high_score = 0;
 
     //Establish communication and assign roles
@@ -1110,10 +1243,8 @@ void task_hw05_system_control(void *pvParameters)
     high_score = hw05_read_high_score();
     wait_for_other_player_ready(&high_score);
 
-    task_console_printf("Both players ready — starting game!\n\r");
-    task_console_printf("Player 1 guesses first.\n\r");
-
-    hw05_draw_status_header(high_score, 0, 0);
+    task_console_printf("Both players ready. Press SW1 to begin gameplay.\n\r");
+    hw05_wait_for_start_press(high_score);
 
     //enter core loop
     while (true)
@@ -1282,6 +1413,7 @@ void task_hw05_system_control(void *pvParameters)
                 // 1. Check if the guess was correct
                 if (last_exact == 4)
                 {
+                    game_over = true;
                     state = HW05_STATE_GAME_OVER;
                     break;
                 }
@@ -1310,15 +1442,89 @@ void task_hw05_system_control(void *pvParameters)
 
 
             case HW05_STATE_GAME_OVER:
-                /*
-                * TODO:
-                * - Display win/lose, prompt restart
-                * - Update high score if needed
-                * - Wait for SW1 to restart
-                * - Reset turn_number = 0
-                * - state = HW05_STATE_INIT
-                */
+            {
+                if (!game_over)
+                {
+                    game_over_i_won = my_turn; // whoever just guessed and was able to enter game over state is the winner
+                    game_over_new_high_score = false;
+                    game_over_guess_count = (uint8_t)((turn_number / 2) + 1);
+
+                    // set high score if I won and it's a new high score
+                    if (game_over_i_won &&
+                        ((high_score == 0) || (game_over_guess_count < high_score)))
+                    {
+                        hw05_write_high_score(game_over_guess_count);
+                        high_score = hw05_read_high_score();
+                        game_over_new_high_score = true;
+                    }
+
+                    // Draw game over screen with results
+                    hw05_draw_game_over_screen(
+                        game_over_i_won,
+                        high_score,
+                        last_exact,
+                        last_misplaced,
+                        game_over_guess_count,
+                        game_over_new_high_score);
+
+                    // some console feedback
+                    task_console_printf(
+                        game_over_i_won ? "Game over: YOU WIN in %u guesses\n\r"
+                                        : "Game over: YOU LOSE in %u guesses\n\r",
+                        game_over_guess_count);
+
+                    if (game_over_new_high_score)
+                    {
+                        task_console_printf(
+                            "New high score saved: %u\n\r",
+                            high_score);
+                    }
+
+                    task_console_printf(
+                        "Press SW1 to restart and select a new cypher\n\r");
+
+                    game_over = true;
+                }
+
+                if (update_dark_mode())
+                {
+                    hw05_draw_game_over_screen(
+                        game_over_i_won,
+                        high_score,
+                        last_exact,
+                        last_misplaced,
+                        game_over_guess_count,
+                        game_over_new_high_score);
+                }
+
+                EventBits_t events = xEventGroupWaitBits(
+                    ECE353_RTOS_Events,
+                    ECE353_EVENT_SW1_PRESSED,
+                    pdTRUE,
+                    pdFALSE,
+                    pdMS_TO_TICKS(50));
+
+                if (events & ECE353_EVENT_SW1_PRESSED)
+                {
+                    memset(my_guess, 0, sizeof(my_guess));
+                    memset(opponent_guess, 0, sizeof(opponent_guess));
+                    memset(my_cypher, 0, sizeof(my_cypher));
+
+                    turn_number = 0;
+                    last_exact = 0;
+                    last_misplaced = 0;
+                    game_over = false;
+
+                    select_cypher(my_cypher);
+                    send_ready_status(&sequence_num);
+                    high_score = hw05_read_high_score();
+                    wait_for_other_player_ready(&high_score);
+                    hw05_wait_for_start_press(high_score);
+                    state = HW05_STATE_INIT;
+                }
+
                 break;
+            }
         }
 
         vTaskDelay(pdMS_TO_TICKS(50));
